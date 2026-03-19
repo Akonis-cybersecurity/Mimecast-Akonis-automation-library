@@ -1,4 +1,5 @@
 from abc import ABCMeta
+from datetime import datetime, timedelta, timezone
 from functools import cached_property
 from typing import Any, cast
 from urllib.parse import urljoin
@@ -36,6 +37,8 @@ class OidcAwsMixin:
     """
 
     module: AWSModule
+    _cached_aws_config: AwsConfiguration | None = None
+    _config_expiration: datetime | None = None
 
     @cached_property
     def url(self) -> str:
@@ -61,7 +64,18 @@ class OidcAwsMixin:
         return token
 
     def get_assume_role(self) -> AwsConfiguration:
-        """Assume AWS role via OIDC web identity and return temporary credentials."""
+        """Assume AWS role via OIDC web identity and return temporary credentials.
+
+        Credentials are cached and reused until 5 minutes before expiration.
+        """
+        now = datetime.now(timezone.utc)
+        if (
+            self._cached_aws_config is not None
+            and self._config_expiration is not None
+            and self._config_expiration - timedelta(minutes=5) > now
+        ):
+            return self._cached_aws_config
+
         sts_client = boto3.client("sts", region_name=self.module.configuration.aws_region_name)
         try:
             oidc_token = self._get_oidc_token()
@@ -71,12 +85,14 @@ class OidcAwsMixin:
                 WebIdentityToken=oidc_token,
             )
             credentials = response["Credentials"]
-            return AwsConfiguration(
+            self._config_expiration = credentials["Expiration"]
+            self._cached_aws_config = AwsConfiguration(
                 aws_access_key_id=credentials["AccessKeyId"],
                 aws_secret_access_key=credentials["SecretAccessKey"],
                 aws_region=self.module.configuration.aws_region_name,
                 aws_session_token=credentials.get("SessionToken"),
             )
+            return self._cached_aws_config
         except Exception as e:
             raise Exception(f"Could not assume role: {str(e)}")
 
