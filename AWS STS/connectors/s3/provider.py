@@ -27,7 +27,7 @@ class AwsAccountProvider(OidcAwsMixin, AwsProvider):
         """
         if self._s3_wrapper is not None:
             return self._s3_wrapper
-        assume_role : AwsConfiguration = self.get_assume_role()
+        assume_role: AwsConfiguration = self.get_assume_role()
         config = S3Configuration(
             aws_access_key_id=assume_role.aws_access_key_id,
             aws_secret_access_key=assume_role.aws_secret_access_key,
@@ -51,7 +51,7 @@ class AwsAccountProvider(OidcAwsMixin, AwsProvider):
         """
         if self._sqs_wrapper is not None:
             return self._sqs_wrapper
-        assume_role : AwsConfiguration = self.get_assume_role()
+        assume_role: AwsConfiguration = self.get_assume_role()
         config = SqsConfiguration(
             frequency=self.configuration.sqs_frequency,
             delete_consumed_messages=self.configuration.delete_consumed_messages,

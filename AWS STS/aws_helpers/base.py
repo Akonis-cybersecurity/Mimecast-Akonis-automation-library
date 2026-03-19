@@ -75,6 +75,7 @@ class OidcAwsMixin:
         except Exception as e:
             raise Exception(f"Could not assume role: {str(e)}")
 
+
 class AWSConnector(OidcAwsMixin, Connector, metaclass=ABCMeta):
     """Abstract connector for AWS integrations using OIDC-based role assumption."""
 
