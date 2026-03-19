@@ -1,5 +1,6 @@
 from abc import ABCMeta
 from functools import cached_property
+from typing import Any, cast
 from urllib.parse import urljoin
 
 import boto3
@@ -14,6 +15,8 @@ class AWSConfiguration(BaseModel):
     aws_role_arn: str = Field(description="The ARN of the AWS role to assume")
     aws_audience: str = Field(description="The audience to use when requesting the OIDC token")
     aws_region_name: str = Field(description="The area hosting the AWS resources")
+    api_key: str = Field(description="Sekoia API key with permissions to access OIDC token endpoint")
+    base_url: str = Field(description="Base URL of the Sekoia API, used to access the OIDC token endpoint")
 
 
 # Canonical alias imported by connectors/ and asset_connector/
@@ -28,29 +31,31 @@ class OidcAwsMixin:
     """Mixin providing OIDC-based AWS role assumption.
 
     The concrete class must expose:
-    - self.configuration with 'base_url' and 'api_key' accessible as dict keys
-    - self.module.configuration with aws_audience, aws_region_name, aws_role_arn
+    - self.module.configuration with aws_audience, aws_region_name, aws_role_arn,
+      base_url, and api_key fields (i.e. AWSModule with AWSConfiguration).
     """
+
+    module: AWSModule
 
     @cached_property
     def url(self) -> str:
         """OIDC token endpoint URL."""
         return urljoin(
-            self.configuration["base_url"],
+            self.module.configuration.base_url,
             f"api/v2/oidc/token?audience={self.module.configuration.aws_audience}",
         )
 
     @property
-    def headers(self) -> dict:
+    def headers(self) -> dict[str, str]:
         """Authorization headers for OIDC token request."""
-        return {"Authorization": f"Bearer {self.configuration['api_key']}"}
+        return {"Authorization": f"Bearer {self.module.configuration.api_key}"}
 
     def _get_oidc_token(self) -> str:
         """Fetch OIDC token from the configured endpoint."""
         result = requests.get(self.url, headers=self.headers, timeout=60)
         if not result.ok:
             raise Exception(f"Could not get OIDC token: {result.status_code} - {result.text}")
-        token = result.json().get("access_token")
+        token: str = result.json().get("access_token")
         if not token:
             raise Exception("Could not get OIDC token: access_token not found in response")
         return token
