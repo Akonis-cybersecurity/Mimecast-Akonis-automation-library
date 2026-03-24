@@ -95,8 +95,9 @@ def test_get_assume_role_success(oidc_instance: ConcreteOidcClass):
         }
     }
 
-    with patch("aws_helpers.oidc.boto3.client", return_value=mock_sts), patch.object(
-        oidc_instance, "_get_oidc_token", return_value="fake_oidc_token"
+    with (
+        patch("aws_helpers.oidc.boto3.client", return_value=mock_sts),
+        patch.object(oidc_instance, "_get_oidc_token", return_value="fake_oidc_token"),
     ):
         result = oidc_instance.get_assume_role()
 
@@ -114,9 +115,10 @@ def test_get_assume_role_uses_cache(oidc_instance: ConcreteOidcClass):
     oidc_instance._cached_aws_config = cached
     oidc_instance._config_expiration = future_expiry
 
-    with patch("aws_helpers.oidc.boto3.client") as mock_boto, patch.object(
-        oidc_instance, "_get_oidc_token"
-    ) as mock_token:
+    with (
+        patch("aws_helpers.oidc.boto3.client") as mock_boto,
+        patch.object(oidc_instance, "_get_oidc_token") as mock_token,
+    ):
         result = oidc_instance.get_assume_role()
 
     mock_boto.assert_not_called()
@@ -142,8 +144,9 @@ def test_get_assume_role_refreshes_expired_cache(oidc_instance: ConcreteOidcClas
         }
     }
 
-    with patch("aws_helpers.oidc.boto3.client", return_value=mock_sts), patch.object(
-        oidc_instance, "_get_oidc_token", return_value="fresh_oidc_token"
+    with (
+        patch("aws_helpers.oidc.boto3.client", return_value=mock_sts),
+        patch.object(oidc_instance, "_get_oidc_token", return_value="fresh_oidc_token"),
     ):
         result = oidc_instance.get_assume_role()
 
@@ -155,8 +158,9 @@ def test_get_assume_role_exception_wrapping(oidc_instance: ConcreteOidcClass):
     mock_sts = MagicMock()
     mock_sts.assume_role_with_web_identity.side_effect = Exception("STS down")
 
-    with patch("aws_helpers.oidc.boto3.client", return_value=mock_sts), patch.object(
-        oidc_instance, "_get_oidc_token", return_value="oidc_token"
+    with (
+        patch("aws_helpers.oidc.boto3.client", return_value=mock_sts),
+        patch.object(oidc_instance, "_get_oidc_token", return_value="oidc_token"),
     ):
         with pytest.raises(Exception, match="Could not assume role: STS down"):
             oidc_instance.get_assume_role()

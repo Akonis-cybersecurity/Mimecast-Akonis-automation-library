@@ -230,9 +230,10 @@ def test_client_success(test_aws_users_asset_connector):
     mock_assume_role.aws_session_token = "test_token"
     mock_assume_role.aws_region = "eu-north-1"
 
-    with mock.patch.object(
-        test_aws_users_asset_connector, "get_assume_role", return_value=mock_assume_role
-    ), mock.patch("asset_connector.aws_assets.boto3.Session") as mock_session:
+    with (
+        mock.patch.object(test_aws_users_asset_connector, "get_assume_role", return_value=mock_assume_role),
+        mock.patch("asset_connector.aws_assets.boto3.Session") as mock_session,
+    ):
         mock_client = mock.MagicMock()
         mock_session.return_value.client.return_value = mock_client
 
@@ -250,9 +251,7 @@ def test_client_success(test_aws_users_asset_connector):
 
 def test_client_no_credentials_error(test_aws_users_asset_connector):
     """Test client creation with NoCredentialsError."""
-    with mock.patch.object(
-        test_aws_users_asset_connector, "get_assume_role", side_effect=NoCredentialsError()
-    ):
+    with mock.patch.object(test_aws_users_asset_connector, "get_assume_role", side_effect=NoCredentialsError()):
         with pytest.raises(NoCredentialsError):
             test_aws_users_asset_connector.client()
 
@@ -262,9 +261,7 @@ def test_client_no_credentials_error(test_aws_users_asset_connector):
 
 def test_client_general_exception(test_aws_users_asset_connector):
     """Test client creation with general exception."""
-    with mock.patch.object(
-        test_aws_users_asset_connector, "get_assume_role", side_effect=Exception("General error")
-    ):
+    with mock.patch.object(test_aws_users_asset_connector, "get_assume_role", side_effect=Exception("General error")):
         with pytest.raises(Exception):
             test_aws_users_asset_connector.client()
 

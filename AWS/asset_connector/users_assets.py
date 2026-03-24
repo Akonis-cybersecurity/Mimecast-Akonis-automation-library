@@ -53,6 +53,7 @@ class AwsUsersAssetConnector(AwsAssetsConnector):
     This connector fetches IAM user data from AWS and converts it to OCSF
     User Inventory format for asset management and security monitoring.
     """
+
     PRODUCT_NAME: str = "AWS IAM"
     OCSF_VERSION: str = "1.6.0"
     PRODUCT_VERSION: str = "N/A"

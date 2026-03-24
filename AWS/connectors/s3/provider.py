@@ -60,7 +60,7 @@ class AwsAccountProvider(OidcAwsMixin, AwsProvider):
                 aws_session_token=aws_config.aws_session_token,
             )
             return SqsWrapper(config)
-        
+
         config = SqsConfiguration(
             frequency=self.configuration.sqs_frequency,
             delete_consumed_messages=self.configuration.delete_consumed_messages,

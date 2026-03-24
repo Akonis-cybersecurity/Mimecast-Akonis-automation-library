@@ -168,8 +168,9 @@ async def test_abstract_aws_s3_queued_connector_next_batch(
     mock_s3.read_key.return_value.__aenter__.side_effect = read_key
 
     connector_type = type(abstract_queued_connector)
-    with patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs), patch.object(
-        connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3
+    with (
+        patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs),
+        patch.object(connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3),
     ):
         result = await abstract_queued_connector.next_batch()
 
@@ -216,8 +217,9 @@ async def test_abstract_aws_s3_queued_connector_next_batch_with_errored_message(
     mock_s3.read_key.return_value.__aenter__.side_effect = read_key
 
     connector_type = type(abstract_queued_connector)
-    with patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs), patch.object(
-        connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3
+    with (
+        patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs),
+        patch.object(connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3),
     ):
         result = await abstract_queued_connector.next_batch()
 
@@ -304,8 +306,9 @@ async def test_abstract_aws_s3_queued_connector_next_batch_with_empty_data_in_s3
     mock_s3.read_key.return_value.__aenter__.return_value = b""
 
     connector_type = type(abstract_queued_connector)
-    with patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs), patch.object(
-        connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3
+    with (
+        patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs),
+        patch.object(connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3),
     ):
         result = await abstract_queued_connector.next_batch()
 

@@ -75,9 +75,7 @@ class TestAwsAccountProviderNoRole:
         provider = _make_provider(aws_module_no_role, queued_config)
         wrapper = provider.s3_wrapper
         assert wrapper._configuration.aws_access_key_id == aws_module_no_role.configuration.aws_access_key
-        assert (
-            wrapper._configuration.aws_secret_access_key == aws_module_no_role.configuration.aws_secret_access_key
-        )
+        assert wrapper._configuration.aws_secret_access_key == aws_module_no_role.configuration.aws_secret_access_key
         assert wrapper._configuration.aws_region == aws_module_no_role.configuration.aws_region_name
 
     def test_sqs_wrapper_uses_access_key_credentials(self, aws_module_no_role, queued_config):
