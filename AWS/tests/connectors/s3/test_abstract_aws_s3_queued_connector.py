@@ -339,6 +339,7 @@ async def test_abstract_aws_s3_queued_connector_next_batch_with_prefix_filter(
     connector = klass(module=aws_module, data_path=symphony_storage)
     connector.configuration = config
     connector.push_data_to_intakes = mock_push_data_to_intakes
+    connector.limit_of_events_to_push = 1  # ensure the loop terminates after 1 event
 
     data_content = session_faker.word()
 
@@ -384,23 +385,28 @@ async def test_abstract_aws_s3_queued_connector_next_batch_with_prefix_filter(
         (non_matching_message, timestamp),
     ]
 
-    connector.sqs_wrapper = MagicMock()
-    connector.sqs_wrapper.receive_messages = MagicMock()
-    connector.sqs_wrapper.receive_messages.return_value.__aenter__.return_value = sqs_messages
+    mock_sqs = MagicMock()
+    mock_sqs.receive_messages = MagicMock()
+    mock_sqs.receive_messages.return_value.__aenter__.return_value = sqs_messages
 
     async def read_key():
         return await async_bytesIO(data_content.encode("utf-8"))
 
-    connector.s3_wrapper = MagicMock()
-    connector.s3_wrapper.read_key = MagicMock()
-    connector.s3_wrapper.read_key.return_value.__aenter__.side_effect = read_key
+    mock_s3 = MagicMock()
+    mock_s3.read_key = MagicMock()
+    mock_s3.read_key.return_value.__aenter__.side_effect = read_key
 
-    result = await connector.next_batch()
+    connector_type = type(connector)
+    with (
+        patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs),
+        patch.object(connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3),
+    ):
+        result = await connector.next_batch()
 
     # Only 1 message should be processed (the matching one)
     assert result[0] == 1
     # s3_wrapper.read_key should have been called only once (for the matching key)
-    assert connector.s3_wrapper.read_key.call_count == 1
+    assert mock_s3.read_key.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -429,15 +435,20 @@ async def test_abstract_aws_s3_queued_connector_next_batch_without_prefix_filter
     async def read_key():
         return await async_bytesIO(data_content.encode("utf-8"))
 
-    abstract_queued_connector.sqs_wrapper = MagicMock()
-    abstract_queued_connector.sqs_wrapper.receive_messages = MagicMock()
-    abstract_queued_connector.sqs_wrapper.receive_messages.return_value.__aenter__.return_value = sqs_messages
+    mock_sqs = MagicMock()
+    mock_sqs.receive_messages = MagicMock()
+    mock_sqs.receive_messages.return_value.__aenter__.return_value = sqs_messages
 
-    abstract_queued_connector.s3_wrapper = MagicMock()
-    abstract_queued_connector.s3_wrapper.read_key = MagicMock()
-    abstract_queued_connector.s3_wrapper.read_key.return_value.__aenter__.side_effect = read_key
+    mock_s3 = MagicMock()
+    mock_s3.read_key = MagicMock()
+    mock_s3.read_key.return_value.__aenter__.side_effect = read_key
 
-    result = await abstract_queued_connector.next_batch()
+    connector_type = type(abstract_queued_connector)
+    with (
+        patch.object(connector_type, "sqs_wrapper", new_callable=PropertyMock, return_value=mock_sqs),
+        patch.object(connector_type, "s3_wrapper", new_callable=PropertyMock, return_value=mock_s3),
+    ):
+        result = await abstract_queued_connector.next_batch()
 
     # Both messages should be processed
     assert result[0] == 2
