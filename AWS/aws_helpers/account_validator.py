@@ -1,17 +1,20 @@
 import boto3
 from sekoia_automation.account_validator import AccountValidator
 
-from aws_helpers.base import AWSModule
+from aws_helpers.base import AwsModule
+from aws_helpers.oidc import OidcAwsMixin
 
 
-class AwsAccountValidator(AccountValidator):
-    module: AWSModule
+class AwsAccountValidator(OidcAwsMixin, AccountValidator):
+    module: AwsModule
 
     def client(self) -> boto3.client:
+        assume_role = self.get_assume_role()
         session = boto3.Session(
-            aws_access_key_id=self.module.configuration.aws_access_key,
-            aws_secret_access_key=self.module.configuration.aws_secret_access_key,
-            region_name=self.module.configuration.aws_region_name,
+            aws_access_key_id=assume_role.aws_access_key_id,
+            aws_secret_access_key=assume_role.aws_secret_access_key,
+            aws_session_token=assume_role.aws_session_token,
+            region_name=assume_role.aws_region,
         )
         return session.client("iam")
 

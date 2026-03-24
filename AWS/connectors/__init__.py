@@ -6,27 +6,12 @@ from abc import ABCMeta
 from functools import cached_property
 from typing import Any, Optional
 
-from pydantic.v1 import BaseModel, Field
 from sekoia_automation.aio.connector import AsyncConnector
 from sekoia_automation.aio.helpers.aws.client import AwsClient, AwsConfiguration
 from sekoia_automation.connector import Connector, DefaultConnectorConfiguration
-from sekoia_automation.module import Module
+from aws_helpers.base import AwsModule, AwsModuleConfiguration
 
 from .metrics import EVENTS_LAG, FORWARD_EVENTS_DURATION, MESSAGES_AGE, OUTCOMING_EVENTS
-
-
-class AwsModuleConfiguration(BaseModel):
-    """The configuration of the AWS module."""
-
-    aws_access_key: str = Field(..., description="The identifier of the access key")
-    aws_secret_access_key: str = Field(secret=True, description="The secret associated to the access key")
-    aws_region_name: str = Field(..., description="The area hosting the AWS resources")
-
-
-class AwsModule(Module):
-    """The AWS module."""
-
-    configuration: AwsModuleConfiguration
 
 
 class AbstractAwsConnectorConfiguration(DefaultConnectorConfiguration):

@@ -30,6 +30,8 @@ def test_aws_device_asset_connector(symphony_storage):
         aws_access_key="fakeKey",
         aws_secret_access_key="fakeSecret",
         aws_region_name="eu-north-1",
+        api_key="fakeApiKey",
+        base_url="https://test.sekoia.io",
     )
     aws_device_connector = AwsDeviceAssetConnector(module=module, data_path=symphony_storage)
     aws_device_connector.configuration = {
@@ -297,7 +299,15 @@ def test_extract_organization_from_owner_id_invalid(test_aws_device_asset_connec
 
 def test_client_success(test_aws_device_asset_connector):
     """Test successful AWS client creation."""
-    with mock.patch("boto3.Session") as mock_session:
+    mock_assume_role = mock.MagicMock()
+    mock_assume_role.aws_access_key_id = "test_key_id"
+    mock_assume_role.aws_secret_access_key = "test_secret"
+    mock_assume_role.aws_session_token = "test_token"
+    mock_assume_role.aws_region = "eu-north-1"
+
+    with mock.patch.object(
+        test_aws_device_asset_connector, "get_assume_role", return_value=mock_assume_role
+    ), mock.patch("asset_connector.aws_assets.boto3.Session") as mock_session:
         mock_client = mock.MagicMock()
         mock_session_instance = mock.MagicMock()
         mock_session_instance.client.return_value = mock_client
@@ -306,7 +316,10 @@ def test_client_success(test_aws_device_asset_connector):
         result = test_aws_device_asset_connector.client()
 
         mock_session.assert_called_once_with(
-            aws_access_key_id="fakeKey", aws_secret_access_key="fakeSecret", region_name="eu-north-1"
+            aws_access_key_id="test_key_id",
+            aws_secret_access_key="test_secret",
+            region_name="eu-north-1",
+            aws_session_token="test_token",
         )
         mock_session_instance.client.assert_called_once_with("ec2")
         assert result == mock_client
@@ -314,9 +327,9 @@ def test_client_success(test_aws_device_asset_connector):
 
 def test_client_no_credentials_error(test_aws_device_asset_connector):
     """Test client creation with no credentials."""
-    with mock.patch("boto3.Session") as mock_session:
-        mock_session.side_effect = NoCredentialsError()
-
+    with mock.patch.object(
+        test_aws_device_asset_connector, "get_assume_role", side_effect=NoCredentialsError()
+    ):
         with pytest.raises(NoCredentialsError):
             test_aws_device_asset_connector.client()
 
@@ -326,14 +339,14 @@ def test_client_no_credentials_error(test_aws_device_asset_connector):
 
 def test_client_general_exception(test_aws_device_asset_connector):
     """Test client creation with general exception."""
-    with mock.patch("boto3.Session") as mock_session:
-        mock_session.side_effect = Exception("Connection failed")
-
+    with mock.patch.object(
+        test_aws_device_asset_connector, "get_assume_role", side_effect=Exception("Connection failed")
+    ):
         with pytest.raises(Exception, match="Connection failed"):
             test_aws_device_asset_connector.client()
 
         test_aws_device_asset_connector.log.assert_called_with(
-            "Failed to create AWS client: Connection failed", level="error"
+            "Failed to create AWS client for ec2: Connection failed", level="error"
         )
         test_aws_device_asset_connector.log_exception.assert_called_once()
 
