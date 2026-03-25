@@ -28,7 +28,7 @@ class AbstractAwsConnector(OidcAwsMixin, AsyncConnector, metaclass=ABCMeta):
     configuration: AbstractAwsConnectorConfiguration
 
     @cached_property
-    def aws_client(self) -> AwsClient:
+    def aws_client(self) -> AwsClient[AwsClientConfiguration]:
         """
         Base implementation of AWS client.
 

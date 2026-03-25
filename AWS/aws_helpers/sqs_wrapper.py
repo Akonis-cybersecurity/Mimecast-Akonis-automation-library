@@ -21,6 +21,8 @@ class SqsConfiguration(AwsClientConfiguration):
 class SqsWrapper(AwsClient[SqsConfiguration]):
     """Aws SQS wrapper."""
 
+    _configuration: SqsConfiguration  # always set by __init__, narrows Optional from base class
+
     def __init__(self, configuration: SqsConfiguration) -> None:
         """
         Initialize SqsTest.
