@@ -53,12 +53,19 @@ class AwsAssetsConnector(OidcAwsMixin, AssetConnector):
     def get_client(self, service_name: str) -> boto3.client:
         """Create and return a configured AWS service client."""
         try:
-            assume_role = self.get_assume_role()
+            if self.module.configuration.aws_role_arn:
+                aws_config = self.get_assume_role()
+                session = boto3.Session(
+                    aws_access_key_id=aws_config.aws_access_key_id,
+                    aws_secret_access_key=aws_config.aws_secret_access_key,
+                    region_name=aws_config.aws_region,
+                    aws_session_token=aws_config.aws_session_token,
+                )
+                return session.client(service_name)
             session = boto3.Session(
-                aws_access_key_id=assume_role.aws_access_key_id,
-                aws_secret_access_key=assume_role.aws_secret_access_key,
-                region_name=assume_role.aws_region,
-                aws_session_token=assume_role.aws_session_token,
+                aws_access_key_id=self.module.configuration.aws_access_key,
+                aws_secret_access_key=self.module.configuration.aws_secret_access_key,
+                region_name=self.module.configuration.aws_region_name,
             )
             return session.client(service_name)
         except NoCredentialsError as e:

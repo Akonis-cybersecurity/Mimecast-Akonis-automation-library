@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sekoia_automation.aio.helpers.aws.client import AwsConfiguration
+from aws_helpers.client import AwsClientConfiguration
 
 from aws_helpers.base import AwsModule, AwsModuleConfiguration
 from aws_helpers.oidc import OidcAwsMixin
@@ -101,7 +101,7 @@ def test_get_assume_role_success(oidc_instance: ConcreteOidcClass):
     ):
         result = oidc_instance.get_assume_role()
 
-    assert isinstance(result, AwsConfiguration)
+    assert isinstance(result, AwsClientConfiguration)
     assert result.aws_access_key_id == "ASIA_KEY"
     assert result.aws_secret_access_key == "secret"
     assert result.aws_session_token == "token"
@@ -111,7 +111,7 @@ def test_get_assume_role_success(oidc_instance: ConcreteOidcClass):
 def test_get_assume_role_uses_cache(oidc_instance: ConcreteOidcClass):
     """Test that a valid cached config is returned without re-fetching."""
     future_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
-    cached = MagicMock(spec=AwsConfiguration)
+    cached = MagicMock(spec=AwsClientConfiguration)
     oidc_instance._cached_aws_config = cached
     oidc_instance._config_expiration = future_expiry
 
@@ -129,7 +129,7 @@ def test_get_assume_role_uses_cache(oidc_instance: ConcreteOidcClass):
 def test_get_assume_role_refreshes_expired_cache(oidc_instance: ConcreteOidcClass):
     """Test that an expired cached config triggers a new token fetch."""
     past_expiry = datetime.now(timezone.utc) - timedelta(minutes=10)
-    cached = MagicMock(spec=AwsConfiguration)
+    cached = MagicMock(spec=AwsClientConfiguration)
     oidc_instance._cached_aws_config = cached
     oidc_instance._config_expiration = past_expiry
 

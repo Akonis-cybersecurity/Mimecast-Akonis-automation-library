@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, Mock, patch
 
-from sekoia_automation.aio.helpers.aws.client import AwsConfiguration
+from aws_helpers.client import AwsClientConfiguration
 
 from aws_helpers.account_validator import AwsAccountValidator
 from aws_helpers.base import AwsModule, AwsModuleConfiguration
@@ -11,9 +11,9 @@ def _make_mock_assume_role(
     secret="test_secret",
     token="test_token",
     region="us-east-1",
-) -> AwsConfiguration:
-    """Return a mock AwsConfiguration-like object with temporary credentials."""
-    creds = MagicMock(spec=AwsConfiguration)
+) -> AwsClientConfiguration:
+    """Return a mock AwsClientConfiguration-like object with temporary credentials."""
+    creds = MagicMock(spec=AwsClientConfiguration)
     creds.aws_access_key_id = key_id
     creds.aws_secret_access_key = secret
     creds.aws_session_token = token

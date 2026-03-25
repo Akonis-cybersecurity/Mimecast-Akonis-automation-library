@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 
 import boto3
 import requests
-from sekoia_automation.aio.helpers.aws.client import AwsConfiguration
+from aws_helpers.client import AwsClientConfiguration
 
 from .base import AwsModule
 
@@ -18,7 +18,7 @@ class OidcAwsMixin:
     """
 
     module: AwsModule
-    _cached_aws_config: AwsConfiguration | None = None
+    _cached_aws_config: AwsClientConfiguration | None = None
     _config_expiration: datetime | None = None
 
     @cached_property
@@ -44,7 +44,7 @@ class OidcAwsMixin:
             raise Exception("Could not get OIDC token: access_token not found in response")
         return token
 
-    def get_assume_role(self) -> AwsConfiguration:
+    def get_assume_role(self) -> AwsClientConfiguration:
         """Assume AWS role via OIDC web identity and return temporary credentials.
 
         Credentials are cached and reused until 5 minutes before expiration.
@@ -67,7 +67,7 @@ class OidcAwsMixin:
             )
             credentials = response["Credentials"]
             self._config_expiration = credentials["Expiration"]
-            self._cached_aws_config = AwsConfiguration(
+            self._cached_aws_config = AwsClientConfiguration(
                 aws_access_key_id=credentials["AccessKeyId"],
                 aws_secret_access_key=credentials["SecretAccessKey"],
                 aws_region=self.module.configuration.aws_region_name,

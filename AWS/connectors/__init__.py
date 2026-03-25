@@ -7,9 +7,10 @@ from functools import cached_property
 from typing import Any, Optional
 
 from sekoia_automation.aio.connector import AsyncConnector
-from sekoia_automation.aio.helpers.aws.client import AwsClient, AwsConfiguration
+from aws_helpers.client import AwsClient, AwsClientConfiguration
 from sekoia_automation.connector import Connector, DefaultConnectorConfiguration
 from aws_helpers.base import AwsModule, AwsModuleConfiguration
+from aws_helpers.oidc import OidcAwsMixin
 
 from .metrics import EVENTS_LAG, FORWARD_EVENTS_DURATION, MESSAGES_AGE, OUTCOMING_EVENTS
 
@@ -20,7 +21,7 @@ class AbstractAwsConnectorConfiguration(DefaultConnectorConfiguration):
     frequency: int = 60
 
 
-class AbstractAwsConnector(AsyncConnector, metaclass=ABCMeta):
+class AbstractAwsConnector(OidcAwsMixin, AsyncConnector, metaclass=ABCMeta):
     """The abstract connector."""
 
     module: AwsModule
@@ -36,12 +37,22 @@ class AbstractAwsConnector(AsyncConnector, metaclass=ABCMeta):
         Returns:
             AwsClientT:
         """
-        config = AwsConfiguration(
+        if self.module.configuration.aws_role_arn:
+            # If role ARN is provided, assume the role via OIDC and use the temporary credentials
+            aws_config = self.get_assume_role()
+            config = AwsClientConfiguration(
+                aws_access_key_id=aws_config.aws_access_key_id,
+                aws_secret_access_key=aws_config.aws_secret_access_key,
+                aws_region=aws_config.aws_region,
+                aws_session_token=aws_config.aws_session_token,
+            )
+            return AwsClient(config)
+
+        config = AwsClientConfiguration(
             aws_access_key_id=self.module.configuration.aws_access_key,
             aws_secret_access_key=self.module.configuration.aws_secret_access_key,
             aws_region=self.module.configuration.aws_region_name,
         )
-
         return AwsClient(config)
 
     async def next_batch(self) -> tuple[int, list[int]]:

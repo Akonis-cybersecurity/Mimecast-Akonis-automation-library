@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from sekoia_automation.aio.helpers.aws.client import AwsClient
+from aws_helpers.client import AwsClient
 from sekoia_automation.connector import DefaultConnectorConfiguration
 
 from connectors import AbstractAwsConnector, AwsModule

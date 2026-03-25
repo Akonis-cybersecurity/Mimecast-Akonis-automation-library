@@ -299,6 +299,7 @@ def test_extract_organization_from_owner_id_invalid(test_aws_device_asset_connec
 
 def test_client_success(test_aws_device_asset_connector):
     """Test successful AWS client creation."""
+    test_aws_device_asset_connector.module.configuration.aws_role_arn = "arn:aws:iam::123456789012:role/test-role"
     mock_assume_role = mock.MagicMock()
     mock_assume_role.aws_access_key_id = "test_key_id"
     mock_assume_role.aws_secret_access_key = "test_secret"
@@ -328,6 +329,7 @@ def test_client_success(test_aws_device_asset_connector):
 
 def test_client_no_credentials_error(test_aws_device_asset_connector):
     """Test client creation with no credentials."""
+    test_aws_device_asset_connector.module.configuration.aws_role_arn = "arn:aws:iam::123456789012:role/test-role"
     with mock.patch.object(test_aws_device_asset_connector, "get_assume_role", side_effect=NoCredentialsError()):
         with pytest.raises(NoCredentialsError):
             test_aws_device_asset_connector.client()
@@ -338,6 +340,7 @@ def test_client_no_credentials_error(test_aws_device_asset_connector):
 
 def test_client_general_exception(test_aws_device_asset_connector):
     """Test client creation with general exception."""
+    test_aws_device_asset_connector.module.configuration.aws_role_arn = "arn:aws:iam::123456789012:role/test-role"
     with mock.patch.object(
         test_aws_device_asset_connector, "get_assume_role", side_effect=Exception("Connection failed")
     ):
