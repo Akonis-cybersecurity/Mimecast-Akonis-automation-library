@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from functools import cached_property
+from typing import Protocol
 from urllib.parse import urljoin
 
 import boto3
@@ -7,6 +8,18 @@ import requests
 from aws_helpers.client import AwsClientConfiguration
 
 from .base import AwsModule
+
+
+class _OidcHost(Protocol):
+    """Protocol describing what OidcAwsMixin expects from its concrete class."""
+
+    module: AwsModule
+    token: str
+    _cached_aws_config: AwsClientConfiguration | None
+    _config_expiration: datetime | None
+
+    def _get_oidc_token(self) -> str: ...
+    def headers(self) -> dict[str, str]: ...
 
 
 class OidcAwsMixin:
@@ -17,24 +30,25 @@ class OidcAwsMixin:
       base_url, and api_key fields (i.e. AwsModule with AwsModuleConfiguration).
     """
 
-    module: AwsModule
     _cached_aws_config: AwsClientConfiguration | None = None
     _config_expiration: datetime | None = None
 
     @cached_property
-    def url(self) -> str:
-        """OIDC token endpoint URL."""
-        return urljoin(
-            self.module.configuration.base_url,
-            "api/v2/oidc/token?audience=sts.amazonaws.com",
-        )
+    def headers(self: _OidcHost) -> dict[str, str]:
+        """Authorization headers for OIDC token request."""
+        return {"Authorization": f"Bearer {self.token}"}
 
     @cached_property
-    def headers(self) -> dict[str, str]:
-        """Authorization headers for OIDC token request."""
-        return {"Authorization": f"Bearer {self.module.configuration.api_key}"}
+    def url(self: _OidcHost) -> str:
+        """OIDC token endpoint URL."""
+        node_type = "trigger" if self.module.trigger_configuration_uuid else "connector"
+        node_uuid = self.module.trigger_configuration_uuid or self.module.connector_configuration_uuid
+        return urljoin(
+            self.module.configuration.base_url,
+            f"api/v2/oidc/token?node={node_type}&node_uuid={node_uuid}&audience=sts.amazonaws.com",
+        )
 
-    def _get_oidc_token(self) -> str:
+    def _get_oidc_token(self: _OidcHost) -> str:
         """Fetch OIDC token from the configured endpoint."""
         result = requests.get(self.url, headers=self.headers, timeout=60)
         if not result.ok:
@@ -44,7 +58,7 @@ class OidcAwsMixin:
             raise Exception("Could not get OIDC token: access_token not found in response")
         return token
 
-    def get_assume_role(self) -> AwsClientConfiguration:
+    def get_assume_role(self: _OidcHost) -> AwsClientConfiguration:
         """Assume AWS role via OIDC web identity and return temporary credentials.
 
         Credentials are cached and reused until 5 minutes before expiration.

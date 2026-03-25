@@ -30,7 +30,6 @@ def test_aws_device_asset_connector(symphony_storage):
         aws_access_key="fakeKey",
         aws_secret_access_key="fakeSecret",
         aws_region_name="eu-north-1",
-        api_key="fakeApiKey",
         base_url="https://test.sekoia.io",
     )
     aws_device_connector = AwsDeviceAssetConnector(module=module, data_path=symphony_storage)

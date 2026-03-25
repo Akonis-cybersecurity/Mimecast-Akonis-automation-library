@@ -20,7 +20,6 @@ def aws_module_no_role(faker: Faker) -> AwsModule:
         aws_access_key=faker.word(),
         aws_secret_access_key=faker.word(),
         aws_region_name="us-west-2",
-        api_key="test_api_key",
         base_url="https://test.sekoia.io",
     )
     return module
@@ -34,7 +33,6 @@ def aws_module_with_role(faker: Faker) -> AwsModule:
         aws_access_key=None,
         aws_secret_access_key=None,
         aws_region_name="us-west-2",
-        api_key="test_api_key",
         base_url="https://test.sekoia.io",
         aws_role_arn="arn:aws:iam::123456789012:role/TestRole",
     )

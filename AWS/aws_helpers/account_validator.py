@@ -2,6 +2,7 @@ import boto3
 from sekoia_automation.account_validator import AccountValidator
 
 from aws_helpers.base import AwsModule
+from aws_helpers.client import AwsClientConfiguration
 from aws_helpers.oidc import OidcAwsMixin
 from botocore.exceptions import NoCredentialsError
 
@@ -12,7 +13,7 @@ class AwsAccountValidator(OidcAwsMixin, AccountValidator):
     def client(self) -> boto3.client:
         try:
             if self.module.configuration.aws_role_arn:
-                aws_config = self.get_assume_role()
+                aws_config: AwsClientConfiguration = self.get_assume_role()
                 session = boto3.Session(
                     aws_access_key_id=aws_config.aws_access_key_id,
                     aws_secret_access_key=aws_config.aws_secret_access_key,

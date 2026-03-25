@@ -1,3 +1,4 @@
+from aws_helpers.client import AwsClientConfiguration
 from aws_helpers.oidc import OidcAwsMixin
 from aws_helpers.provider import AwsProvider
 from aws_helpers.s3_wrapper import S3Configuration, S3Wrapper
@@ -24,7 +25,7 @@ class AwsAccountProvider(OidcAwsMixin, AwsProvider):
         """
         if self.module.configuration.aws_role_arn:
             # If role ARN is provided, assume the role via OIDC and use the temporary credentials
-            aws_config = self.get_assume_role()
+            aws_config: AwsClientConfiguration = self.get_assume_role()
             config = S3Configuration(
                 aws_access_key_id=aws_config.aws_access_key_id,
                 aws_secret_access_key=aws_config.aws_secret_access_key,
@@ -49,7 +50,7 @@ class AwsAccountProvider(OidcAwsMixin, AwsProvider):
         """
         if self.module.configuration.aws_role_arn:
             # If role ARN is provided, assume the role via OIDC and use the temporary credentials
-            aws_config = self.get_assume_role()
+            aws_config: AwsClientConfiguration = self.get_assume_role()
             config = SqsConfiguration(
                 frequency=self.configuration.sqs_frequency,
                 delete_consumed_messages=self.configuration.delete_consumed_messages,

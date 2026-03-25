@@ -39,14 +39,8 @@ class AbstractAwsConnector(OidcAwsMixin, AsyncConnector, metaclass=ABCMeta):
         """
         if self.module.configuration.aws_role_arn:
             # If role ARN is provided, assume the role via OIDC and use the temporary credentials
-            aws_config = self.get_assume_role()
-            config = AwsClientConfiguration(
-                aws_access_key_id=aws_config.aws_access_key_id,
-                aws_secret_access_key=aws_config.aws_secret_access_key,
-                aws_region=aws_config.aws_region,
-                aws_session_token=aws_config.aws_session_token,
-            )
-            return AwsClient(config)
+            aws_config: AwsClientConfiguration = self.get_assume_role()
+            return AwsClient(aws_config)
 
         if not self.module.configuration.aws_access_key or not self.module.configuration.aws_secret_access_key:
             raise ValueError(

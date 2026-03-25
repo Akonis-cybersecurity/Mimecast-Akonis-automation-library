@@ -10,6 +10,7 @@ import boto3
 from botocore.exceptions import NoCredentialsError
 from sekoia_automation.asset_connector import AssetConnector
 from sekoia_automation.storage import PersistentJSON
+from aws_helpers.client import AwsClientConfiguration
 from aws_helpers.oidc import OidcAwsMixin
 from aws_helpers.base import AwsModule
 
@@ -54,7 +55,7 @@ class AwsAssetsConnector(OidcAwsMixin, AssetConnector):
         """Create and return a configured AWS service client."""
         try:
             if self.module.configuration.aws_role_arn:
-                aws_config = self.get_assume_role()
+                aws_config: AwsClientConfiguration = self.get_assume_role()
                 session = boto3.Session(
                     aws_access_key_id=aws_config.aws_access_key_id,
                     aws_secret_access_key=aws_config.aws_secret_access_key,

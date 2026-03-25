@@ -13,8 +13,9 @@ from aws_helpers.oidc import OidcAwsMixin
 class ConcreteOidcClass(OidcAwsMixin):
     """Concrete implementation of OidcAwsMixin for testing."""
 
-    def __init__(self, module: AwsModule) -> None:
+    def __init__(self, module: AwsModule, token: str = "test_token") -> None:
         self.module = module
+        self.token = token
 
 
 @pytest.fixture
@@ -24,10 +25,11 @@ def aws_module_with_role() -> AwsModule:
         aws_access_key="test_key",
         aws_secret_access_key="test_secret",
         aws_region_name="us-east-1",
-        api_key="test_api_key",
         base_url="https://test.sekoia.io",
         aws_role_arn="arn:aws:iam::123456789012:role/TestRole",
     )
+    module._trigger_configuration_uuid = None
+    module._connector_configuration_uuid = "test-connector-uuid"
     return module
 
 
@@ -36,14 +38,29 @@ def oidc_instance(aws_module_with_role: AwsModule) -> ConcreteOidcClass:
     return ConcreteOidcClass(module=aws_module_with_role)
 
 
-def test_url_property(oidc_instance: ConcreteOidcClass):
-    """Test that url is constructed correctly from base_url."""
-    assert oidc_instance.url == "https://test.sekoia.io/api/v2/oidc/token?audience=sts.amazonaws.com"
+def test_url_property_connector(oidc_instance: ConcreteOidcClass):
+    """Test that url uses node=connector when only connector_configuration_uuid is set."""
+    expected = (
+        "https://test.sekoia.io/api/v2/oidc/token"
+        "?node=connector&node_uuid=test-connector-uuid&audience=sts.amazonaws.com"
+    )
+    assert oidc_instance.url == expected
+
+
+def test_url_property_trigger(aws_module_with_role: AwsModule):
+    """Test that url uses node=trigger when trigger_configuration_uuid is set."""
+    aws_module_with_role._trigger_configuration_uuid = "test-trigger-uuid"
+    instance = ConcreteOidcClass(module=aws_module_with_role)
+    expected = (
+        "https://test.sekoia.io/api/v2/oidc/token"
+        "?node=trigger&node_uuid=test-trigger-uuid&audience=sts.amazonaws.com"
+    )
+    assert instance.url == expected
 
 
 def test_headers_property(oidc_instance: ConcreteOidcClass):
-    """Test that headers include the Bearer token."""
-    assert oidc_instance.headers == {"Authorization": "Bearer test_api_key"}
+    """Test that headers include the Bearer token from self.token."""
+    assert oidc_instance.headers == {"Authorization": "Bearer test_token"}
 
 
 def test_get_oidc_token_success(oidc_instance: ConcreteOidcClass):
