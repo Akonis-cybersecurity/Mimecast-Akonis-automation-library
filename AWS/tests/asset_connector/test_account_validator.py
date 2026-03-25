@@ -31,6 +31,7 @@ class TestAwsAccountValidator:
             aws_access_key="test_access_key",
             aws_secret_access_key="test_secret_key",
             aws_region_name="us-east-1",
+            aws_role_arn="arn:aws:iam::123456789012:role/test-role",
             api_key="test_api_key",
             base_url="https://test.sekoia.io",
         )
