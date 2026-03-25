@@ -75,4 +75,4 @@ class OidcAwsMixin:
             )
             return self._cached_aws_config
         except Exception as e:
-            raise Exception(f"Could not assume role: {str(e)}")
+            raise RuntimeError(f"Could not assume role: {str(e)}") from e

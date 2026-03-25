@@ -48,6 +48,10 @@ class AbstractAwsConnector(OidcAwsMixin, AsyncConnector, metaclass=ABCMeta):
             )
             return AwsClient(config)
 
+        if not self.module.configuration.aws_access_key or not self.module.configuration.aws_secret_access_key:
+            raise ValueError(
+                "Either 'aws_role_arn' or both 'aws_access_key' and 'aws_secret_access_key' must be provided."
+            )
         config = AwsClientConfiguration(
             aws_access_key_id=self.module.configuration.aws_access_key,
             aws_secret_access_key=self.module.configuration.aws_secret_access_key,
