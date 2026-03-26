@@ -19,6 +19,11 @@ class _OidcHost(Protocol):
     _config_expiration: datetime | None
 
     def _get_oidc_token(self) -> str: ...
+
+    @property
+    def url(self) -> str: ...
+
+    @property
     def headers(self) -> dict[str, str]: ...
 
 
@@ -41,10 +46,13 @@ class OidcAwsMixin:
     @cached_property
     def url(self: _OidcHost) -> str:
         """OIDC token endpoint URL."""
+        base_url = self.module.configuration.base_url
+        if not base_url:
+            raise ValueError("base_url is not configured in module configuration")
         node_type = "trigger" if self.module.trigger_configuration_uuid else "connector"
         node_uuid = self.module.trigger_configuration_uuid or self.module.connector_configuration_uuid
         return urljoin(
-            self.module.configuration.base_url,
+            base_url,
             f"api/v2/oidc/token?node={node_type}&node_uuid={node_uuid}&audience=sts.amazonaws.com",
         )
 
