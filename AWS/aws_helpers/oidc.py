@@ -46,7 +46,7 @@ class OidcAwsMixin:
     def headers(self: _OidcHost) -> dict[str, str]:
         """Authorization headers for OIDC token request."""
         return {"Authorization": f"Bearer {self.token}"}
-    
+
     @cached_property
     def base_url(self: _OidcHost) -> str:
         """Base URL for OIDC token endpoint."""
