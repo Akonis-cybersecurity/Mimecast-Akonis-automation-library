@@ -15,9 +15,6 @@ class AwsModuleConfiguration(BaseModel):
         secret=True, default=None, description="The secret associated to the access key"
     )
     aws_region_name: str = Field(..., description="The area hosting the AWS resources")
-    base_url: Optional[str] = Field(
-        default=None, description="Base URL of the Sekoia API, used to access the OIDC token endpoint"
-    )
 
 
 class AwsModule(Module):

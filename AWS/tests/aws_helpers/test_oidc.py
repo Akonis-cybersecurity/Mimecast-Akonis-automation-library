@@ -16,6 +16,7 @@ class ConcreteOidcClass(OidcAwsMixin):
     def __init__(self, module: AwsModule, token: str = "test_token") -> None:
         self.module = module
         self.token = token
+        self.logs_url = "https://test.sekoia.io/api/v1/logs"
 
 
 @pytest.fixture
@@ -25,7 +26,6 @@ def aws_module_with_role() -> AwsModule:
         aws_access_key="test_key",
         aws_secret_access_key="test_secret",
         aws_region_name="us-east-1",
-        base_url="https://test.sekoia.io",
         aws_role_arn="arn:aws:iam::123456789012:role/TestRole",
     )
     module._trigger_configuration_uuid = None

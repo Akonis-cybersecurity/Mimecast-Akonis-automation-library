@@ -15,16 +15,20 @@ class _OidcHost(Protocol):
 
     module: AwsModule
     token: str
+    logs_url: str
     _cached_aws_config: AwsClientConfiguration | None
     _config_expiration: datetime | None
 
     def _get_oidc_token(self) -> str: ...
 
-    @property
+    @cached_property
     def url(self) -> str: ...
 
-    @property
+    @cached_property
     def headers(self) -> dict[str, str]: ...
+
+    @cached_property
+    def base_url(self) -> str: ...
 
 
 class OidcAwsMixin:
@@ -42,13 +46,19 @@ class OidcAwsMixin:
     def headers(self: _OidcHost) -> dict[str, str]:
         """Authorization headers for OIDC token request."""
         return {"Authorization": f"Bearer {self.token}"}
+    
+    @cached_property
+    def base_url(self: _OidcHost) -> str:
+        """Base URL for OIDC token endpoint."""
+        base_url = self.logs_url.rsplit("/api/", 1)[0] if self.logs_url else None
+        if not base_url:
+            raise ValueError("logs_url is not configured in module configuration")
+        return base_url
 
     @cached_property
     def url(self: _OidcHost) -> str:
         """OIDC token endpoint URL."""
-        base_url = self.module.configuration.base_url
-        if not base_url:
-            raise ValueError("base_url is not configured in module configuration")
+        base_url = self.base_url
         node_type = "trigger" if self.module.trigger_configuration_uuid else "connector"
         node_uuid = self.module.trigger_configuration_uuid or self.module.connector_configuration_uuid
         return urljoin(
