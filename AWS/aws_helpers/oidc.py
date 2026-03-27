@@ -63,7 +63,7 @@ class OidcAwsMixin:
         node_uuid = self.module.trigger_configuration_uuid or self.module.connector_configuration_uuid
         return urljoin(
             base_url,
-            f"api/v2/oidc/token?node={node_type}&node_uuid={node_uuid}&audience=sts.amazonaws.com",
+            f"api/v1/symphony/oidc/token?node_type={node_type}&node_uuid={node_uuid}&audience=sts.amazonaws.com",
         )
 
     def _get_oidc_token(self: _OidcHost) -> str:
@@ -71,9 +71,9 @@ class OidcAwsMixin:
         result = requests.get(self.url, headers=self.headers, timeout=60)
         if not result.ok:
             raise Exception(f"Could not get OIDC token: {result.status_code} - {result.text}")
-        token: str = result.json().get("access_token")
+        token: str = result.json().get("token")
         if not token:
-            raise Exception("Could not get OIDC token: access_token not found in response")
+            raise Exception("Could not get OIDC token: token not found in response")
         return token
 
     def get_assume_role(self: _OidcHost) -> AwsClientConfiguration:

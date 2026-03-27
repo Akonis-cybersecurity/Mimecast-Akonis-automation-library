@@ -41,8 +41,8 @@ def oidc_instance(aws_module_with_role: AwsModule) -> ConcreteOidcClass:
 def test_url_property_connector(oidc_instance: ConcreteOidcClass):
     """Test that url uses node=connector when only connector_configuration_uuid is set."""
     expected = (
-        "https://test.sekoia.io/api/v2/oidc/token"
-        "?node=connector&node_uuid=test-connector-uuid&audience=sts.amazonaws.com"
+        "https://test.sekoia.io/api/v1/symphony/oidc/token"
+        "?node_type=connector&node_uuid=test-connector-uuid&audience=sts.amazonaws.com"
     )
     assert oidc_instance.url == expected
 
@@ -52,8 +52,8 @@ def test_url_property_trigger(aws_module_with_role: AwsModule):
     aws_module_with_role._trigger_configuration_uuid = "test-trigger-uuid"
     instance = ConcreteOidcClass(module=aws_module_with_role)
     expected = (
-        "https://test.sekoia.io/api/v2/oidc/token"
-        "?node=trigger&node_uuid=test-trigger-uuid&audience=sts.amazonaws.com"
+        "https://test.sekoia.io/api/v1/symphony/oidc/token"
+        "?node_type=trigger&node_uuid=test-trigger-uuid&audience=sts.amazonaws.com"
     )
     assert instance.url == expected
 
@@ -67,7 +67,7 @@ def test_get_oidc_token_success(oidc_instance: ConcreteOidcClass):
     """Test successful OIDC token retrieval."""
     mock_response = MagicMock()
     mock_response.ok = True
-    mock_response.json.return_value = {"access_token": "my_oidc_token"}
+    mock_response.json.return_value = {"token": "my_oidc_token"}
 
     with patch("aws_helpers.oidc.requests.get", return_value=mock_response):
         token = oidc_instance._get_oidc_token()
@@ -94,7 +94,7 @@ def test_get_oidc_token_missing_access_token(oidc_instance: ConcreteOidcClass):
     mock_response.json.return_value = {}
 
     with patch("aws_helpers.oidc.requests.get", return_value=mock_response):
-        with pytest.raises(Exception, match="access_token not found in response"):
+        with pytest.raises(Exception, match="token not found in response"):
             oidc_instance._get_oidc_token()
 
 
