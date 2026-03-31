@@ -3,14 +3,12 @@
 import asyncio
 import time
 from abc import ABCMeta
-from functools import cached_property
 from typing import Any, Optional
 
 from sekoia_automation.aio.connector import AsyncConnector
-from aws_helpers.client import AwsClient, AwsClientConfiguration
 from sekoia_automation.connector import Connector, DefaultConnectorConfiguration
 from aws_helpers.base import AwsModule, AwsModuleConfiguration
-from aws_helpers.oidc import OidcAwsMixin
+from connectors.provider import AwsAccountProvider
 
 from .metrics import EVENTS_LAG, FORWARD_EVENTS_DURATION, MESSAGES_AGE, OUTCOMING_EVENTS
 
@@ -21,37 +19,11 @@ class AbstractAwsConnectorConfiguration(DefaultConnectorConfiguration):
     frequency: int = 60
 
 
-class AbstractAwsConnector(OidcAwsMixin, AsyncConnector, metaclass=ABCMeta):
+class AbstractAwsConnector(AwsAccountProvider, AsyncConnector, metaclass=ABCMeta):
     """The abstract connector."""
 
     module: AwsModule
     configuration: AbstractAwsConnectorConfiguration
-
-    @cached_property
-    def aws_client(self) -> AwsClient[AwsClientConfiguration]:
-        """
-        Base implementation of AWS client.
-
-        AwsClient contains `get_client` method with correct initialization.
-
-        Returns:
-            AwsClientT:
-        """
-        if self.module.configuration.aws_role_arn:
-            # If role ARN is provided, assume the role via OIDC and use the temporary credentials
-            aws_config: AwsClientConfiguration = self.get_assume_role()
-            return AwsClient(aws_config)
-
-        if not self.module.configuration.aws_access_key or not self.module.configuration.aws_secret_access_key:
-            raise ValueError(
-                "Either 'aws_role_arn' or both 'aws_access_key' and 'aws_secret_access_key' must be provided."
-            )
-        config = AwsClientConfiguration(
-            aws_access_key_id=self.module.configuration.aws_access_key,
-            aws_secret_access_key=self.module.configuration.aws_secret_access_key,
-            aws_region=self.module.configuration.aws_region_name,
-        )
-        return AwsClient(config)
 
     async def next_batch(self) -> tuple[int, list[int]]:
         """
