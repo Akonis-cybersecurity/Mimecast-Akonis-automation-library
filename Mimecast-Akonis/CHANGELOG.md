@@ -32,3 +32,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Retry with exponential backoff** on HTTP 429: 60 s → 120 s → 240 s (max 3 retries).
 - **Prometheus metrics** per source: collected events, forwarded events, duration, and lag.
 - **Gzip decompression** for binary SIEM log responses.
+
+[1.0.0]: https://github.com/Akonis-cybersecurity/Mimecast-Akonis-automation-library/releases/tag/v1.0.0
