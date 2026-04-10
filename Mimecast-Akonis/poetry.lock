@@ -1496,18 +1496,16 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "prometheus-client"
-version = "0.25.0"
+version = "0.20.0"
 description = "Python client for the Prometheus monitoring system."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.8"
 files = [
-    {file = "prometheus_client-0.25.0-py3-none-any.whl", hash = "sha256:d5aec89e349a6ec230805d0df882f3807f74fd6c1a2fa86864e3c2279059fed1"},
-    {file = "prometheus_client-0.25.0.tar.gz", hash = "sha256:5e373b75c31afb3c86f1a52fa1ad470c9aace18082d39ec0d2f918d11cc9ba28"},
+    {file = "prometheus_client-0.20.0-py3-none-any.whl", hash = "sha256:cde524a85bce83ca359cc837f28b8c0db5cac7aa653a588fd7e84ba061c329e7"},
+    {file = "prometheus_client-0.20.0.tar.gz", hash = "sha256:287629d00b147a32dcb2be0b9df905da599b2d82f80377083ec8463309a4bb89"},
 ]
 
 [package.extras]
-aiohttp = ["aiohttp"]
-django = ["django"]
 twisted = ["twisted"]
 
 [[package]]
@@ -2814,5 +2812,5 @@ propcache = ">=0.2.1"
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.11"
-content-hash = "7b389df897ef0ad6c48577d7415169995f28edc4d67e0cab36a39a4280818b29"
+python-versions = ">=3.11,<3.13"
+content-hash = "1a15c5ac830099644accb186039985f0fed790e2f33d53b36fcdf0c713347765"
