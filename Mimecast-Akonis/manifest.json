@@ -53,7 +53,7 @@
   "name": "Mimecast",
   "slug": "mimecast-akonis",
   "uuid": "c09d4315-7933-41f8-b715-0d59a11886fd",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "categories": [
     "Email Security"
   ],
