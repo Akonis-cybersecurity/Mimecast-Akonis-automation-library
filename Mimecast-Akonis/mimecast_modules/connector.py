@@ -56,18 +56,27 @@ class MimecastConnector(Connector):
     # HTTP client (lazy, single instance)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _secret(val) -> str:
+        """Return the plain-text value whether val is SecretStr or a raw str.
+
+        The Sekoia SDK injects secrets via setattr(), bypassing pydantic
+        validation, so SecretStr fields may arrive as plain str at runtime.
+        """
+        return val.get_secret_value() if hasattr(val, "get_secret_value") else val
+
     @cached_property
     def client(self) -> MimecastClient:
         mod = self.module.configuration
         return MimecastClient(
             base_url=mod.base_url,
             client_id=mod.client_id,
-            client_secret=mod.client_secret.get_secret_value(),
+            client_secret=self._secret(mod.client_secret),
             base_url_v1=mod.base_url_v1,
             access_key=mod.access_key,
-            secret_key=mod.secret_key.get_secret_value() if mod.secret_key else None,
+            secret_key=self._secret(mod.secret_key) if mod.secret_key else None,
             app_id=mod.app_id,
-            app_key=mod.app_key.get_secret_value() if mod.app_key else None,
+            app_key=self._secret(mod.app_key) if mod.app_key else None,
         )
 
     # ------------------------------------------------------------------
