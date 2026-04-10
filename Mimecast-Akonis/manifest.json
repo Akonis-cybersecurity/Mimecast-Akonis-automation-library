@@ -3,14 +3,57 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Mimecast",
     "type": "object",
-    "properties": {},
-    "required": []
+    "properties": {
+      "client_id": {
+        "description": "OAuth2 Client ID (API 2.0)",
+        "type": "string"
+      },
+      "client_secret": {
+        "description": "OAuth2 Client Secret (API 2.0)",
+        "type": "string"
+      },
+      "base_url": {
+        "description": "Mimecast API 2.0 base URL",
+        "default": "https://api.services.mimecast.com",
+        "type": "string"
+      },
+      "access_key": {
+        "description": "API 1.0 Access Key (for legacy HMAC endpoints)",
+        "type": "string"
+      },
+      "secret_key": {
+        "description": "API 1.0 Secret Key (for legacy HMAC endpoints)",
+        "type": "string"
+      },
+      "app_id": {
+        "description": "API 1.0 Application ID",
+        "type": "string"
+      },
+      "app_key": {
+        "description": "API 1.0 Application Key",
+        "type": "string"
+      },
+      "base_url_v1": {
+        "description": "Mimecast API 1.0 base URL (region-specific, e.g. https://de-api.mimecast.com)",
+        "default": "https://us-api.mimecast.com",
+        "type": "string"
+      }
+    },
+    "required": [
+      "client_id",
+      "client_secret"
+    ],
+    "secrets": [
+      "client_secret",
+      "secret_key",
+      "app_key"
+    ]
   },
   "description": "Mimecast is a cloud security platform for email. This module collects security events, operational logs, and compliance data (SIEM stream, TTP URL/Attachment/Impersonation, DLP, Audit, Threat Intel, and more) and forwards them to SEKOIA.IO.",
   "name": "Mimecast",
   "slug": "mimecast-akonis",
   "uuid": "c09d4315-7933-41f8-b715-0d59a11886fd",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "categories": [
     "Email Security"
   ],

@@ -1,0 +1,42 @@
+{
+  "input": {
+    "message": "{\"userEmailAddress\": \"user@corp.com\", \"url\": \"http://phishing.example.com/steal\", \"action\": \"Block\", \"scanResult\": \"malicious\", \"date\": \"2026-04-10T10:00:00+0000\", \"sendDate\": \"2026-04-10T09:55:00+0000\", \"category\": \"Phishing & Fraud\", \"subject\": \"Click here now\", \"messageId\": \"msg-001\", \"sendingIp\": \"5.6.7.8\", \"accountId\": \"ANONYMIZED\"}"
+  },
+  "expected": {
+    "message": "{\"userEmailAddress\": \"user@corp.com\", \"url\": \"http://phishing.example.com/steal\", \"action\": \"Block\", \"scanResult\": \"malicious\", \"date\": \"2026-04-10T10:00:00+0000\", \"sendDate\": \"2026-04-10T09:55:00+0000\", \"category\": \"Phishing & Fraud\", \"subject\": \"Click here now\", \"messageId\": \"msg-001\", \"sendingIp\": \"5.6.7.8\", \"accountId\": \"ANONYMIZED\"}",
+    "@timestamp": "2026-04-10T10:00:00+0000",
+    "event": {
+      "category": ["email", "threat"],
+      "dataset": "ttp_url",
+      "kind": "alert",
+      "provider": "Mimecast",
+      "type": ["denied"]
+    },
+    "email": {
+      "message_id": "msg-001",
+      "origination_timestamp": "2026-04-10T09:55:00+0000",
+      "subject": "Click here now",
+      "to": { "address": ["user@corp.com"] }
+    },
+    "mimecast": {
+      "ttp": {
+        "url": {
+          "action": "Block",
+          "category": "Phishing & Fraud",
+          "scan_result": "malicious",
+          "send_date": "2026-04-10T09:55:00+0000"
+        }
+      }
+    },
+    "organization": { "id": "ANONYMIZED" },
+    "source": { "address": "5.6.7.8", "ip": "5.6.7.8" },
+    "destination": {
+      "user": { "domain": "corp.com", "email": "user@corp.com" }
+    },
+    "url": { "original": "http://phishing.example.com/steal" },
+    "related": {
+      "ip": ["5.6.7.8"],
+      "user": ["user@corp.com"]
+    }
+  }
+}

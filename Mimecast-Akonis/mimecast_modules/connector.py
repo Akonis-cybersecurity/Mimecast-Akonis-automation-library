@@ -10,7 +10,7 @@ from typing import Generator, List, Optional
 
 from sekoia_automation.connector import Connector, DefaultConnectorConfiguration
 from sekoia_automation.storage import PersistentJSON
-from pydantic.v1 import Field, SecretStr
+from pydantic.v1 import Field
 
 from . import MimecastModule
 from .client import MimecastClient
@@ -19,18 +19,6 @@ from .metrics import EVENTS_LAG, FORWARD_EVENTS_DURATION, INCOMING_EVENTS, OUTCO
 
 
 class MimecastConnectorConfiguration(DefaultConnectorConfiguration):
-    # ---- API 2.0 (OAuth2) ----
-    client_id: str = Field(..., description="OAuth2 Client ID (API 2.0)")
-    client_secret: SecretStr = Field(..., description="OAuth2 Client Secret (API 2.0)")
-    base_url: str = Field("https://api.services.mimecast.com", description="API 2.0 base URL")
-
-    # ---- API 1.0 (HMAC-SHA1) — optional, required only for legacy endpoints ----
-    access_key: Optional[str] = Field(None, description="API 1.0 Access Key")
-    secret_key: Optional[SecretStr] = Field(None, description="API 1.0 Secret Key")
-    app_id: Optional[str] = Field(None, description="API 1.0 Application ID")
-    app_key: Optional[SecretStr] = Field(None, description="API 1.0 Application Key")
-    base_url_v1: str = Field("https://us-api.mimecast.com", description="API 1.0 base URL (region-specific)")
-
     # ---- Polling settings ----
     frequency: int = Field(60, description="Seconds between polling cycles")
     chunk_size: int = Field(100, description="Max events per batch sent to Sekoia")
@@ -70,16 +58,16 @@ class MimecastConnector(Connector):
 
     @cached_property
     def client(self) -> MimecastClient:
-        cfg = self.configuration
+        mod = self.module.configuration
         return MimecastClient(
-            base_url=cfg.base_url,
-            client_id=cfg.client_id,
-            client_secret=cfg.client_secret.get_secret_value(),
-            base_url_v1=cfg.base_url_v1,
-            access_key=cfg.access_key,
-            secret_key=cfg.secret_key.get_secret_value() if cfg.secret_key else None,
-            app_id=cfg.app_id,
-            app_key=cfg.app_key.get_secret_value() if cfg.app_key else None,
+            base_url=mod.base_url,
+            client_id=mod.client_id,
+            client_secret=mod.client_secret.get_secret_value(),
+            base_url_v1=mod.base_url_v1,
+            access_key=mod.access_key,
+            secret_key=mod.secret_key.get_secret_value() if mod.secret_key else None,
+            app_id=mod.app_id,
+            app_key=mod.app_key.get_secret_value() if mod.app_key else None,
         )
 
     # ------------------------------------------------------------------

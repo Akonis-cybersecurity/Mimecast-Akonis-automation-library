@@ -7,6 +7,7 @@ from sekoia_automation import constants
 
 from mimecast_modules import MimecastModule
 from mimecast_modules.connector import MimecastConnector, MimecastConnectorConfiguration
+from mimecast_modules.models import MimecastModuleConfiguration
 
 
 @pytest.fixture
@@ -24,11 +25,7 @@ def data_storage():
 def connector(data_storage):
     """Return a fully configured MimecastConnector with mocked push/log methods."""
     module = MimecastModule()
-    module.configuration = {}  # Module has no required fields
-
-    connector = MimecastConnector(module=module, data_path=data_storage)
-    connector.configuration = MimecastConnectorConfiguration(
-        intake_key="test-intake-key",
+    module.configuration = MimecastModuleConfiguration(
         client_id="test-client-id",
         client_secret="test-client-secret",
         base_url="https://api.services.mimecast.com",
@@ -37,6 +34,11 @@ def connector(data_storage):
         app_id="test-app-id",
         app_key="test-app-key",
         base_url_v1="https://us-api.mimecast.com",
+    )
+
+    connector = MimecastConnector(module=module, data_path=data_storage)
+    connector.configuration = MimecastConnectorConfiguration(
+        intake_key="test-intake-key",
         frequency=60,
         chunk_size=100,
         historical_days=7,

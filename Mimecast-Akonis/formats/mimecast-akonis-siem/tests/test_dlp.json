@@ -1,0 +1,36 @@
+{
+  "input": {
+    "message": "{\"senderAddress\": \"employee@corp.com\", \"recipientAddress\": \"external@gmail.com\", \"subject\": \"Q4 financial report\", \"policy\": \"Confidential Data Outbound\", \"action\": \"hold\", \"channel\": \"email\", \"messageId\": \"msg-003\", \"date\": \"2026-04-10T13:00:00+0000\", \"accountId\": \"ANONYMIZED\"}"
+  },
+  "expected": {
+    "message": "{\"senderAddress\": \"employee@corp.com\", \"recipientAddress\": \"external@gmail.com\", \"subject\": \"Q4 financial report\", \"policy\": \"Confidential Data Outbound\", \"action\": \"hold\", \"channel\": \"email\", \"messageId\": \"msg-003\", \"date\": \"2026-04-10T13:00:00+0000\", \"accountId\": \"ANONYMIZED\"}",
+    "@timestamp": "2026-04-10T13:00:00+0000",
+    "event": {
+      "category": ["email", "intrusion_detection"],
+      "dataset": "dlp",
+      "kind": "alert",
+      "provider": "Mimecast",
+      "type": ["info"]
+    },
+    "email": {
+      "from": { "address": ["employee@corp.com"] },
+      "message_id": "msg-003",
+      "origination_timestamp": "2026-04-10T13:00:00+0000",
+      "subject": "Q4 financial report",
+      "to": { "address": ["external@gmail.com"] }
+    },
+    "mimecast": {
+      "dlp": {
+        "action": "hold",
+        "channel": "email",
+        "policy": "Confidential Data Outbound"
+      }
+    },
+    "organization": { "id": "ANONYMIZED" },
+    "source": { "user": { "domain": "corp.com", "email": "employee@corp.com" } },
+    "destination": { "user": { "domain": "gmail.com", "email": "external@gmail.com" } },
+    "related": {
+      "user": ["employee@corp.com", "external@gmail.com"]
+    }
+  }
+}

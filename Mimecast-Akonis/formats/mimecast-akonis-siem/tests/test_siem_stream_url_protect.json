@@ -1,0 +1,53 @@
+{
+  "input": {
+    "message": "{\"processingId\": \"proc-001\", \"aggregateId\": \"agg-001\", \"timestamp\": 1715767102752, \"accountId\": \"ANONYMIZED\", \"urlCategory\": \"Phishing & Fraud\", \"action\": \"Block\", \"url\": \"http://malicious.example.net\", \"subject\": \"Urgent: Reset your password\", \"senderIp\": \"1.2.3.4\", \"senderEnvelope\": \"attacker@attacker.com\", \"route\": \"inbound\", \"recipients\": \"victim@corp.com\", \"messageId\": \"<abc123@attacker.com>\", \"type\": \"url protect\", \"subtype\": \"Block\"}"
+  },
+  "expected": {
+    "message": "{\"processingId\": \"proc-001\", \"aggregateId\": \"agg-001\", \"timestamp\": 1715767102752, \"accountId\": \"ANONYMIZED\", \"urlCategory\": \"Phishing & Fraud\", \"action\": \"Block\", \"url\": \"http://malicious.example.net\", \"subject\": \"Urgent: Reset your password\", \"senderIp\": \"1.2.3.4\", \"senderEnvelope\": \"attacker@attacker.com\", \"route\": \"inbound\", \"recipients\": \"victim@corp.com\", \"messageId\": \"<abc123@attacker.com>\", \"type\": \"url protect\", \"subtype\": \"Block\"}",
+    "@timestamp": "2024-05-15T09:58:22.752000Z",
+    "event": {
+      "action": "Block",
+      "category": ["email", "threat"],
+      "dataset": "url protect",
+      "kind": "alert",
+      "provider": "Mimecast",
+      "type": ["denied"]
+    },
+    "email": {
+      "from": { "address": ["attacker@attacker.com"] },
+      "message_id": "abc123@attacker.com",
+      "subject": "Urgent: Reset your password",
+      "to": { "address": ["victim@corp.com"] }
+    },
+    "mimecast": {
+      "siem": {
+        "aggregate_id": "agg-001",
+        "processing_id": "proc-001",
+        "subtype": "Block",
+        "url_category": "Phishing & Fraud"
+      }
+    },
+    "network": { "direction": "inbound" },
+    "organization": { "id": "ANONYMIZED" },
+    "source": {
+      "address": "1.2.3.4",
+      "ip": "1.2.3.4",
+      "user": { "domain": "attacker.com", "email": "attacker@attacker.com" }
+    },
+    "destination": {
+      "user": { "domain": "corp.com", "email": "victim@corp.com" }
+    },
+    "url": {
+      "domain": "malicious.example.net",
+      "original": "http://malicious.example.net",
+      "port": 80,
+      "registered_domain": "example.net",
+      "scheme": "http",
+      "top_level_domain": "net"
+    },
+    "related": {
+      "ip": ["1.2.3.4"],
+      "user": ["attacker@attacker.com", "victim@corp.com"]
+    }
+  }
+}

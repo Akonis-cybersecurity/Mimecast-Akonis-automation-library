@@ -1,0 +1,49 @@
+{
+  "input": {
+    "message": "{\"senderAddress\": \"attacker@evil.com\", \"recipientAddress\": \"user@corp.com\", \"subject\": \"Invoice Q1\", \"fileName\": \"invoice.exe\", \"result\": \"malicious\", \"actionTriggered\": \"block\", \"definition\": \"Block Malicious Attachments\", \"messageId\": \"msg-002\", \"date\": \"2026-04-10T11:00:00+0000\", \"md5\": \"d41d8cd98f00b204e9800998ecf8427e\", \"sha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"accountId\": \"ANONYMIZED\"}"
+  },
+  "expected": {
+    "message": "{\"senderAddress\": \"attacker@evil.com\", \"recipientAddress\": \"user@corp.com\", \"subject\": \"Invoice Q1\", \"fileName\": \"invoice.exe\", \"result\": \"malicious\", \"actionTriggered\": \"block\", \"definition\": \"Block Malicious Attachments\", \"messageId\": \"msg-002\", \"date\": \"2026-04-10T11:00:00+0000\", \"md5\": \"d41d8cd98f00b204e9800998ecf8427e\", \"sha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"accountId\": \"ANONYMIZED\"}",
+    "@timestamp": "2026-04-10T11:00:00+0000",
+    "event": {
+      "category": ["email", "threat"],
+      "dataset": "ttp_attachment",
+      "kind": "alert",
+      "provider": "Mimecast",
+      "type": ["info"]
+    },
+    "email": {
+      "from": { "address": ["attacker@evil.com"] },
+      "message_id": "msg-002",
+      "origination_timestamp": "2026-04-10T11:00:00+0000",
+      "subject": "Invoice Q1",
+      "to": { "address": ["user@corp.com"] }
+    },
+    "file": {
+      "hash": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "name": "invoice.exe"
+    },
+    "mimecast": {
+      "ttp": {
+        "attachment": {
+          "action_triggered": "block",
+          "definition": "Block Malicious Attachments",
+          "result": "malicious"
+        }
+      }
+    },
+    "organization": { "id": "ANONYMIZED" },
+    "source": { "user": { "domain": "evil.com", "email": "attacker@evil.com" } },
+    "destination": { "user": { "domain": "corp.com", "email": "user@corp.com" } },
+    "related": {
+      "hash": [
+        "d41d8cd98f00b204e9800998ecf8427e",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "user": ["attacker@evil.com", "user@corp.com"]
+    }
+  }
+}

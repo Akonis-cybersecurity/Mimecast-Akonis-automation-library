@@ -16,40 +16,6 @@
         "default": "https://intake.sekoia.io",
         "type": "string"
       },
-      "client_id": {
-        "description": "OAuth2 Client ID (API 2.0)",
-        "type": "string"
-      },
-      "client_secret": {
-        "description": "OAuth2 Client Secret (API 2.0)",
-        "type": "string"
-      },
-      "base_url": {
-        "description": "Mimecast API 2.0 base URL",
-        "default": "https://api.services.mimecast.com",
-        "type": "string"
-      },
-      "access_key": {
-        "description": "API 1.0 Access Key (for legacy HMAC endpoints)",
-        "type": "string"
-      },
-      "secret_key": {
-        "description": "API 1.0 Secret Key (for legacy HMAC endpoints)",
-        "type": "string"
-      },
-      "app_id": {
-        "description": "API 1.0 Application ID",
-        "type": "string"
-      },
-      "app_key": {
-        "description": "API 1.0 Application Key",
-        "type": "string"
-      },
-      "base_url_v1": {
-        "description": "Mimecast API 1.0 base URL (region-specific, e.g. https://us-api.mimecast.com)",
-        "default": "https://us-api.mimecast.com",
-        "type": "string"
-      },
       "frequency": {
         "description": "Polling cycle interval in seconds",
         "type": "integer",
@@ -146,9 +112,7 @@
       }
     },
     "required": [
-      "intake_key",
-      "client_id",
-      "client_secret"
+      "intake_key"
     ]
   },
   "uuid": "84756f85-4691-4bf0-afa1-6226a0d7bfd0"

@@ -1,0 +1,37 @@
+{
+  "input": {
+    "message": "{\"user\": \"admin@corp.com\", \"eventType\": \"Policy Updated\", \"category\": \"Administration\", \"application\": \"Gateway\", \"sourceIp\": \"192.168.1.10\", \"eventTime\": \"2026-04-10T14:00:00+0000\", \"id\": \"audit-001\", \"accountId\": \"ANONYMIZED\"}"
+  },
+  "expected": {
+    "message": "{\"user\": \"admin@corp.com\", \"eventType\": \"Policy Updated\", \"category\": \"Administration\", \"application\": \"Gateway\", \"sourceIp\": \"192.168.1.10\", \"eventTime\": \"2026-04-10T14:00:00+0000\", \"id\": \"audit-001\", \"accountId\": \"ANONYMIZED\"}",
+    "@timestamp": "2026-04-10T14:00:00+0000",
+    "event": {
+      "category": ["configuration"],
+      "dataset": "audit",
+      "kind": "event",
+      "provider": "Mimecast",
+      "type": ["change"]
+    },
+    "mimecast": {
+      "audit": {
+        "application": "Gateway",
+        "category": "Administration",
+        "event_type": "Policy Updated"
+      }
+    },
+    "organization": { "id": "ANONYMIZED" },
+    "source": {
+      "address": "192.168.1.10",
+      "ip": "192.168.1.10",
+      "user": {
+        "domain": "corp.com",
+        "email": "admin@corp.com",
+        "name": "admin"
+      }
+    },
+    "related": {
+      "ip": ["192.168.1.10"],
+      "user": ["admin", "admin@corp.com"]
+    }
+  }
+}

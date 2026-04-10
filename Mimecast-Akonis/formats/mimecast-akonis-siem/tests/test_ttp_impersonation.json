@@ -1,0 +1,30 @@
+{
+  "input": {
+    "message": "{\"senderAddress\": \"ceo-fake@attacker.com\", \"recipientAddress\": \"finance@corp.com\", \"subject\": \"Urgent wire transfer\", \"action\": \"Hold\", \"definition\": \"Impersonation Protection Policy\", \"hits\": [\"sender_domain_similarity\", \"display_name_similarity\"], \"taggedMalicious\": true, \"senderIp\": \"9.10.11.12\", \"date\": \"2026-04-10T12:00:00+0000\"}"
+  },
+  "expected": {
+    "message": "{\"senderAddress\": \"ceo-fake@attacker.com\", \"recipientAddress\": \"finance@corp.com\", \"subject\": \"Urgent wire transfer\", \"action\": \"Hold\", \"definition\": \"Impersonation Protection Policy\", \"hits\": [\"sender_domain_similarity\", \"display_name_similarity\"], \"taggedMalicious\": true, \"senderIp\": \"9.10.11.12\", \"date\": \"2026-04-10T12:00:00+0000\"}",
+    "@timestamp": "2026-04-10T12:00:00+0000",
+    "event": {
+      "category": ["email", "threat"],
+      "dataset": "ttp_impersonation",
+      "provider": "Mimecast",
+      "type": ["denied"]
+    },
+    "email": {
+      "from": { "address": ["ceo-fake@attacker.com"] },
+      "to": { "address": ["finance@corp.com"] }
+    },
+    "mimecast": {
+      "ttp": {
+        "impersonation": {
+          "action": "Hold",
+          "definition": "Impersonation Protection Policy",
+          "hits": ["sender_domain_similarity", "display_name_similarity"],
+          "tagged_malicious": true
+        }
+      }
+    },
+    "source": { "ip": "9.10.11.12" }
+  }
+}

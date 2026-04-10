@@ -1,0 +1,377 @@
+name: mimecast-akonis-siem
+pipeline:
+  - name: parse_event
+    external:
+      name: json.parse-json
+      properties:
+        input_field: "{{original.message}}"
+        output_field: message
+
+  - name: parse_rejectioninfo
+    filter: '{{ parse_event.message.get("rejectionInfo") and "Url" in parse_event.message.rejectionInfo}}'
+    external:
+      name: kv.parse-kv
+      properties:
+        input_field: '{{parse_event.message.rejectionInfo.replace("[","").replace("]","")}}'
+        output_field: message
+        value_sep: ":"
+        item_sep: ","
+
+  - name: parse_spam_processing_detail
+    filter: "{{parse_event.message.get('spamProcessingDetail') and parse_event.message.spamProcessingDetail is string and parse_event.message.spamProcessingDetail | length > 0}}"
+    external:
+      name: json.parse-json
+      properties:
+        input_field: "{{parse_event.message.spamProcessingDetail.replace('\\\\', '').strip('\"')}}"
+        output_field: message
+
+  - name: set_ecs_fields
+
+stages:
+  set_ecs_fields:
+    actions:
+
+      # ---------------------------------------------------------------
+      # Baseline — common to all events
+      # ---------------------------------------------------------------
+      - set:
+          event.provider: "Mimecast"
+          event.kind: "event"
+
+      # ---------------------------------------------------------------
+      # SIEM Stream — routed by `type` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "{{parse_event.message.type}}"
+          event.category: ["email"]
+          event.type: ["info"]
+        filter: "{{parse_event.message.get('type') != None}}"
+
+      # Security event types → add threat category + alert kind
+      - set:
+          event.category: ["email", "threat"]
+          event.kind: "alert"
+        filter: "{{parse_event.message.get('type') in ('url protect', 'av', 'attachment protect', 'impersonation protect')}}"
+
+      # Blocked / rejected actions → denied
+      - set:
+          event.type: ["denied"]
+        filter: "{{parse_event.message.get('type') != None and parse_event.message.get('action') in ('Blocked', 'Rej', 'Block')}}"
+
+      # ---------------------------------------------------------------
+      # SIEM Stream — ECS fields
+      # ---------------------------------------------------------------
+      - set:
+          "@timestamp": "{{parse_event.message.timestamp | to_rfc3339}}"
+          event.action: "{{parse_event.message.action}}"
+
+          mimecast.siem.processing_id: "{{parse_event.message.processingId}}"
+          mimecast.siem.aggregate_id: "{{parse_event.message.aggregateId}}"
+          mimecast.siem.subtype: "{{parse_event.message.subtype}}"
+          mimecast.siem.hold_reason: "{{parse_event.message.holdReason}}"
+          mimecast.siem.delivered: "{{parse_event.message.delivered}}"
+          mimecast.siem.delivery_errors: "{{parse_event.message.deliveryErrors}}"
+          mimecast.siem.scan_results: "{{parse_event.message.scanResults}}"
+          mimecast.siem.url_category: "{{parse_event.message.urlCategory}}"
+          mimecast.siem.virus_found: "{{parse_event.message.virusFound}}"
+          mimecast.siem.rejection.code: "{{parse_event.message.rejectionCode}}"
+          mimecast.siem.rejection.info: "{{parse_event.message.rejectionInfo}}"
+          mimecast.siem.rejection.type: "{{parse_event.message.rejectionType}}"
+          mimecast.siem.spam.info: "{{parse_event.message.spamInfo}}"
+          mimecast.siem.spam.score: "{{parse_event.message.spamScore}}"
+          mimecast.siem.spam.detection_level: "{{parse_event.message.spamDetectionLevel}}"
+
+          email.direction: "{{parse_event.message.direction}}"
+          email.subject: "{{parse_event.message.subject}}"
+
+          # ECS: source.ip + source.address (raw string alongside parsed IP)
+          source.ip: "{{parse_event.message.senderIp}}"
+          source.address: "{{parse_event.message.senderIp}}"
+          destination.ip: "{{parse_event.message.destinationIp}}"
+
+          url.original: "{{parse_event.message.url}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('type') != None}}"
+
+      # email.message_id — strip < > per ECS wildcard convention
+      - set:
+          email.message_id: "{{parse_event.message.messageId.lstrip('<').rstrip('>')}}"
+        filter: "{{parse_event.message.get('type') != None and parse_event.message.get('messageId') != None}}"
+
+      # network.direction — ECS values: inbound / outbound
+      - set:
+          network.direction: "{{parse_event.message.route.lower()}}"
+        filter: "{{parse_event.message.get('route') != None and parse_event.message.route.lower() in ['inbound', 'outbound']}}"
+
+      # Spam processing detail
+      - set:
+          mimecast.siem.spam.processing_detail: "{{parse_spam_processing_detail.message}}"
+        filter: "{{parse_spam_processing_detail is defined and parse_spam_processing_detail.message | length > 0}}"
+
+      - set:
+          mimecast.siem.spam.processing_detail: "{{parse_event.message.spamProcessingDetail}}"
+        filter: "{{final.mimecast.siem.spam.processing_detail == null and parse_event.message.get('spamProcessingDetail') != None}}"
+
+      # Recipient — `recipient` (single) or `recipients`
+      - set:
+          email.to.address: ["{{parse_event.message.recipient}}"]
+        filter: "{{parse_event.message.get('recipient') != None}}"
+
+      - set:
+          email.to.address: ["{{parse_event.message.recipients}}"]
+        filter: "{{parse_event.message.get('recipients') != None}}"
+
+      # Sender — envelope preferred, fallback to header
+      - set:
+          email.from.address: ["{{parse_event.message.senderEnvelope or parse_event.message.senderHeader}}"]
+        filter: "{{parse_event.message.get('senderEnvelope') != None or parse_event.message.get('senderHeader') != None}}"
+
+      # ECS: source.user.email + source.user.domain extracted from sender address
+      - set:
+          source.user.email: "{{parse_event.message.senderEnvelope}}"
+          source.user.domain: "{{parse_event.message.senderEnvelope.split('@')[-1]}}"
+        filter: "{{parse_event.message.get('senderEnvelope') != None}}"
+
+      - set:
+          source.user.email: "{{parse_event.message.senderHeader}}"
+          source.user.domain: "{{parse_event.message.senderHeader.split('@')[-1]}}"
+        filter: "{{parse_event.message.get('senderHeader') != None and parse_event.message.get('senderEnvelope') == None}}"
+
+      # ECS: destination.user.email + destination.user.domain
+      - set:
+          destination.user.email: "{{parse_event.message.recipient}}"
+          destination.user.domain: "{{parse_event.message.recipient.split('@')[-1]}}"
+        filter: "{{parse_event.message.get('recipient') != None}}"
+
+      - set:
+          destination.user.email: "{{parse_event.message.recipients}}"
+          destination.user.domain: "{{parse_event.message.recipients.split('@')[-1]}}"
+        filter: "{{parse_event.message.get('recipients') != None}}"
+
+      # Attachments (list of names, comma-separated)
+      - set:
+          email.attachments: >
+            {%- set attachments = [] -%}
+            {%- for item in parse_event.message.attachments.split(",") -%}
+              {%- set file_name = item.strip('" ') -%}
+              {%- set item = {"file": {"name": file_name}} -%}
+              {%- set attachments = attachments.append(item) -%}
+            {%- endfor -%}
+            {{ attachments }}
+        filter: "{{parse_event.message.get('attachments') != None}}"
+
+      # Attachments with hash (av / attachment protect datasets)
+      - set:
+          email.attachments: >
+            [{"file": {"name": "{{ parse_event.message.fileName.strip('" ') }}", "hash": {"md5": "{{ parse_event.message.md5 }}", "sha1": "{{ parse_event.message.sha1 }}", "sha256": "{{ parse_event.message.sha256 }}"}}},]
+        filter: '{{final.event.dataset in ["av", "attachment protect"]}}'
+
+      # ECS: file.* fields populated from attachment metadata
+      - set:
+          file.name: "{{parse_event.message.fileName}}"
+          file.hash.md5: "{{parse_event.message.md5}}"
+          file.hash.sha1: "{{parse_event.message.sha1}}"
+          file.hash.sha256: "{{parse_event.message.sha256}}"
+        filter: '{{final.event.dataset in ["av", "attachment protect"] and parse_event.message.get("fileName") != None}}'
+
+      # URL extracted from rejectionInfo KV
+      - set:
+          url.original: "{{ parse_rejectioninfo.message.Url }}"
+        filter: '{{ parse_rejectioninfo is defined and "Url" in parse_event.message.get("rejectionInfo", "") }}'
+
+      # ---------------------------------------------------------------
+      # Audit events — /api/audit/get-audit-events
+      # Discriminator: `eventType` present + no `type` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "audit"
+          event.category: ["configuration"]
+          event.type: ["change"]
+          event.kind: "event"
+          "@timestamp": "{{parse_event.message.eventTime}}"
+          mimecast.audit.event_type: "{{parse_event.message.eventType or parse_event.message.auditType}}"
+          mimecast.audit.category: "{{parse_event.message.category}}"
+          mimecast.audit.application: "{{parse_event.message.application}}"
+          source.ip: "{{parse_event.message.sourceIp}}"
+          source.address: "{{parse_event.message.sourceIp}}"
+          # ECS user fields — actor of the admin action
+          source.user.email: "{{parse_event.message.user}}"
+          source.user.name: "{{parse_event.message.user.split('@')[0]}}"
+          source.user.domain: "{{parse_event.message.user.split('@')[-1]}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('eventType') != None and parse_event.message.get('type') == None and parse_event.message.get('scanResult') == None}}"
+
+      # ---------------------------------------------------------------
+      # TTP URL logs — /api/ttp/url/get-logs
+      # Discriminator: `scanResult` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "ttp_url"
+          event.category: ["email", "threat"]
+          event.type: ["info"]
+          event.kind: "event"
+          "@timestamp": "{{parse_event.message.date}}"
+          mimecast.ttp.url.scan_result: "{{parse_event.message.scanResult}}"
+          mimecast.ttp.url.category: "{{parse_event.message.category}}"
+          mimecast.ttp.url.action: "{{parse_event.message.action}}"
+          mimecast.ttp.url.send_date: "{{parse_event.message.sendDate}}"
+          url.original: "{{parse_event.message.url}}"
+          email.to.address: ["{{parse_event.message.userEmailAddress}}"]
+          destination.user.email: "{{parse_event.message.userEmailAddress}}"
+          destination.user.domain: "{{parse_event.message.userEmailAddress.split('@')[-1]}}"
+          source.ip: "{{parse_event.message.sendingIp}}"
+          source.address: "{{parse_event.message.sendingIp}}"
+          email.subject: "{{parse_event.message.subject}}"
+          email.message_id: "{{parse_event.message.messageId}}"
+          email.origination_timestamp: "{{parse_event.message.sendDate}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('scanResult') != None}}"
+
+      - set:
+          event.type: ["denied"]
+          event.kind: "alert"
+        filter: "{{parse_event.message.get('scanResult') != None and parse_event.message.get('action') == 'Block'}}"
+
+      # ---------------------------------------------------------------
+      # TTP Attachment logs — /api/ttp/attachment/get-logs
+      # Discriminator: `actionTriggered` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "ttp_attachment"
+          event.category: ["email", "threat"]
+          event.type: ["info"]
+          event.kind: "alert"
+          "@timestamp": "{{parse_event.message.date}}"
+          mimecast.ttp.attachment.result: "{{parse_event.message.result}}"
+          mimecast.ttp.attachment.action_triggered: "{{parse_event.message.actionTriggered}}"
+          mimecast.ttp.attachment.definition: "{{parse_event.message.definition}}"
+          file.name: "{{parse_event.message.fileName}}"
+          email.from.address: ["{{parse_event.message.senderAddress}}"]
+          source.user.email: "{{parse_event.message.senderAddress}}"
+          source.user.domain: "{{parse_event.message.senderAddress.split('@')[-1]}}"
+          email.to.address: ["{{parse_event.message.recipientAddress}}"]
+          destination.user.email: "{{parse_event.message.recipientAddress}}"
+          destination.user.domain: "{{parse_event.message.recipientAddress.split('@')[-1]}}"
+          email.subject: "{{parse_event.message.subject}}"
+          email.message_id: "{{parse_event.message.messageId}}"
+          email.origination_timestamp: "{{parse_event.message.date}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('actionTriggered') != None}}"
+
+      # ---------------------------------------------------------------
+      # TTP Impersonation logs — /api/ttp/impersonation/get-logs
+      # Discriminator: `taggedMalicious` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "ttp_impersonation"
+          event.category: ["email", "threat"]
+          event.type: ["info"]
+          event.kind: "event"
+          "@timestamp": "{{parse_event.message.date}}"
+          mimecast.ttp.impersonation.action: "{{parse_event.message.action}}"
+          mimecast.ttp.impersonation.definition: "{{parse_event.message.definition}}"
+          mimecast.ttp.impersonation.hits: "{{parse_event.message.hits}}"
+          mimecast.ttp.impersonation.tagged_malicious: "{{parse_event.message.taggedMalicious}}"
+          email.from.address: ["{{parse_event.message.senderAddress}}"]
+          source.user.email: "{{parse_event.message.senderAddress}}"
+          source.user.domain: "{{parse_event.message.senderAddress.split('@')[-1]}}"
+          email.to.address: ["{{parse_event.message.recipientAddress}}"]
+          destination.user.email: "{{parse_event.message.recipientAddress}}"
+          destination.user.domain: "{{parse_event.message.recipientAddress.split('@')[-1]}}"
+          email.subject: "{{parse_event.message.subject}}"
+          source.ip: "{{parse_event.message.senderIp}}"
+          source.address: "{{parse_event.message.senderIp}}"
+          email.origination_timestamp: "{{parse_event.message.date}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('taggedMalicious') != None}}"
+
+      - set:
+          event.type: ["denied"]
+          event.kind: "alert"
+        filter: "{{parse_event.message.get('taggedMalicious') == true}}"
+
+      # ---------------------------------------------------------------
+      # DLP logs — /api/dlp/get-logs
+      # Discriminator: `policy` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "dlp"
+          event.category: ["email", "intrusion_detection"]
+          event.type: ["info"]
+          event.kind: "alert"
+          "@timestamp": "{{parse_event.message.date}}"
+          mimecast.dlp.policy: "{{parse_event.message.policy}}"
+          mimecast.dlp.action: "{{parse_event.message.action}}"
+          mimecast.dlp.channel: "{{parse_event.message.channel}}"
+          email.from.address: ["{{parse_event.message.senderAddress}}"]
+          source.user.email: "{{parse_event.message.senderAddress}}"
+          source.user.domain: "{{parse_event.message.senderAddress.split('@')[-1]}}"
+          email.to.address: ["{{parse_event.message.recipientAddress}}"]
+          destination.user.email: "{{parse_event.message.recipientAddress}}"
+          destination.user.domain: "{{parse_event.message.recipientAddress.split('@')[-1]}}"
+          email.subject: "{{parse_event.message.subject}}"
+          email.message_id: "{{parse_event.message.messageId}}"
+          email.origination_timestamp: "{{parse_event.message.date}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('policy') != None}}"
+
+      # ---------------------------------------------------------------
+      # Threat Events API 2.0 — /api/ttp/threat/find-in-batch
+      # Discriminator: `threatType` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "threat"
+          event.category: ["email", "threat"]
+          event.type: ["indicator"]
+          event.kind: "alert"
+          "@timestamp": "{{parse_event.message.timestamp | to_rfc3339}}"
+          mimecast.threat.type: "{{parse_event.message.threatType}}"
+          mimecast.threat.definition: "{{parse_event.message.definition}}"
+          mimecast.threat.action: "{{parse_event.message.action}}"
+          email.from.address: ["{{parse_event.message.senderAddress}}"]
+          source.user.email: "{{parse_event.message.senderAddress}}"
+          source.user.domain: "{{parse_event.message.senderAddress.split('@')[-1]}}"
+          email.subject: "{{parse_event.message.subject}}"
+          url.original: "{{parse_event.message.url}}"
+          # ECS file fields for malicious file indicators
+          file.name: "{{parse_event.message.fileName}}"
+          file.hash.sha256: "{{parse_event.message.sha256}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('threatType') != None}}"
+
+      - set:
+          event.type: ["denied"]
+        filter: "{{parse_event.message.get('threatType') != None and parse_event.message.get('action') in ('block', 'Block')}}"
+
+      # ---------------------------------------------------------------
+      # related.* — ECS aggregation fields (populated last)
+      # ---------------------------------------------------------------
+
+      # related.ip — all IPs seen in the event
+      - set:
+          related.ip: >
+            {%- set ips = [] -%}
+            {%- if final.source.ip -%}{%- set _ = ips.append(final.source.ip) -%}{%- endif -%}
+            {%- if final.destination.ip -%}{%- set _ = ips.append(final.destination.ip) -%}{%- endif -%}
+            {{ ips }}
+        filter: "{{final.source.ip != None or final.destination.ip != None}}"
+
+      # related.user — all usernames / emails seen in the event
+      - set:
+          related.user: >
+            {%- set users = [] -%}
+            {%- if final.source.user.name -%}{%- set _ = users.append(final.source.user.name) -%}{%- endif -%}
+            {%- if final.source.user.email and final.source.user.email not in users -%}{%- set _ = users.append(final.source.user.email) -%}{%- endif -%}
+            {%- if final.destination.user.email and final.destination.user.email not in users -%}{%- set _ = users.append(final.destination.user.email) -%}{%- endif -%}
+            {{ users }}
+        filter: "{{final.source.user.name != None or final.source.user.email != None or final.destination.user.email != None}}"
+
+      # related.hash — all file hashes seen in the event
+      - set:
+          related.hash: >
+            {%- set hashes = [] -%}
+            {%- if final.file.hash.md5 -%}{%- set _ = hashes.append(final.file.hash.md5) -%}{%- endif -%}
+            {%- if final.file.hash.sha1 -%}{%- set _ = hashes.append(final.file.hash.sha1) -%}{%- endif -%}
+            {%- if final.file.hash.sha256 -%}{%- set _ = hashes.append(final.file.hash.sha256) -%}{%- endif -%}
+            {{ hashes }}
+        filter: "{{final.file.hash.md5 != None or final.file.hash.sha1 != None or final.file.hash.sha256 != None}}"

@@ -1,0 +1,12 @@
+uuid: 793278b4-111e-4268-8687-294debbd66a4
+automation_connector_uuid: 84756f85-4691-4bf0-afa1-6226a0d7bfd0
+automation_module_uuid: c09d4315-7933-41f8-b715-0d59a11886fd
+name: Mimecast SIEM
+slug: mimecast-akonis-siem
+description: >-
+  Collects all Mimecast security events: SIEM stream, TTP URL/Attachment/Impersonation,
+  DLP, Audit Events, Rejection logs, Threat Events, Threat Intel feeds, and more.
+data_sources:
+  Email gateway: Inbound, outbound and internal email security logs
+  Threat Intelligence: TTP URL, Attachment, Impersonation protection and IOC feeds
+  Audit & Compliance: DLP violations, admin audit events, archive logs
