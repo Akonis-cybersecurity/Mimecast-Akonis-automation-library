@@ -80,3 +80,6 @@ dmypy.json
 */.devcontainer/*
 */test_end_to_end*
 */.github/skills/*
+
+# Claude Code
+CLAUDE.md

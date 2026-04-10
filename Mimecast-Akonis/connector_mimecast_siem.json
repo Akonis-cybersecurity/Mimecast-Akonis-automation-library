@@ -1,0 +1,155 @@
+{
+  "description": "Collect Mimecast security events (SIEM stream, TTP URL/Attachment/Impersonation, DLP, Audit Events, Threat Intel, and more) and forward them to SEKOIA.IO.",
+  "docker_parameters": "mimecast_siem_connector",
+  "name": "Fetch Mimecast SIEM Events",
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Mimecast SIEM Connector",
+    "type": "object",
+    "properties": {
+      "intake_key": {
+        "description": "Intake key used when forwarding events to SEKOIA.IO",
+        "type": "string"
+      },
+      "intake_server": {
+        "description": "URL of the intake server",
+        "default": "https://intake.sekoia.io",
+        "type": "string"
+      },
+      "client_id": {
+        "description": "OAuth2 Client ID (API 2.0)",
+        "type": "string"
+      },
+      "client_secret": {
+        "description": "OAuth2 Client Secret (API 2.0)",
+        "type": "string"
+      },
+      "base_url": {
+        "description": "Mimecast API 2.0 base URL",
+        "default": "https://api.services.mimecast.com",
+        "type": "string"
+      },
+      "access_key": {
+        "description": "API 1.0 Access Key (for legacy HMAC endpoints)",
+        "type": "string"
+      },
+      "secret_key": {
+        "description": "API 1.0 Secret Key (for legacy HMAC endpoints)",
+        "type": "string"
+      },
+      "app_id": {
+        "description": "API 1.0 Application ID",
+        "type": "string"
+      },
+      "app_key": {
+        "description": "API 1.0 Application Key",
+        "type": "string"
+      },
+      "base_url_v1": {
+        "description": "Mimecast API 1.0 base URL (region-specific, e.g. https://us-api.mimecast.com)",
+        "default": "https://us-api.mimecast.com",
+        "type": "string"
+      },
+      "frequency": {
+        "description": "Polling cycle interval in seconds",
+        "type": "integer",
+        "default": 60,
+        "minimum": 10
+      },
+      "chunk_size": {
+        "description": "Maximum number of events per batch sent to SEKOIA.IO",
+        "type": "integer",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "historical_days": {
+        "description": "Number of days of history to collect on first run",
+        "type": "integer",
+        "default": 7,
+        "minimum": 1
+      },
+      "enable_siem_stream": {
+        "description": "Enable SIEM Stream API (API 2.0 — real-time email events)",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_siem_logs": {
+        "description": "Enable SIEM MTA Logs (API 1.0)",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_ttp_url_logs": {
+        "description": "Enable TTP URL Protection logs",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_ttp_attachment_logs": {
+        "description": "Enable TTP Attachment Protection logs",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_ttp_impersonation_logs": {
+        "description": "Enable TTP Impersonation Protection logs",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_dlp_logs": {
+        "description": "Enable DLP policy violation logs",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_audit_events": {
+        "description": "Enable Admin Audit Events",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_rejection_logs": {
+        "description": "Enable Email Rejection logs",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_message_release_logs": {
+        "description": "Enable Message Release (quarantine) logs",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_threat_events": {
+        "description": "Enable Threat Events API 2.0",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_threat_intel_feed": {
+        "description": "Enable Threat Intelligence IOC feed",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_threat_incidents": {
+        "description": "Enable Threat Remediation Incidents",
+        "type": "boolean",
+        "default": true
+      },
+      "enable_awareness_training": {
+        "description": "Enable Awareness Training data (SAFE scores, phishing campaigns) — polled daily",
+        "type": "boolean",
+        "default": false
+      },
+      "enable_web_security_logs": {
+        "description": "Enable Web Security DNS/Proxy logs (requires Web Security licence)",
+        "type": "boolean",
+        "default": false
+      },
+      "enable_archive_logs": {
+        "description": "Enable Archive search and message view logs (requires Archive licence)",
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "intake_key",
+      "client_id",
+      "client_secret"
+    ]
+  },
+  "uuid": "84756f85-4691-4bf0-afa1-6226a0d7bfd0"
+}
