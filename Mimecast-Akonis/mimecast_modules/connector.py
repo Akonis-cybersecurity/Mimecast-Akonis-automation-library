@@ -66,6 +66,12 @@ class MimecastConnector(Connector):
         return val.get_secret_value() if hasattr(val, "get_secret_value") else val
 
     @cached_property
+    def _has_v1_creds(self) -> bool:
+        """True if all API 1.0 credentials are configured."""
+        mod = self.module.configuration
+        return all([mod.access_key, mod.secret_key, mod.app_id, mod.app_key])
+
+    @cached_property
     def client(self) -> MimecastClient:
         mod = self.module.configuration
         return MimecastClient(
@@ -632,25 +638,38 @@ class MimecastConnector(Connector):
     def run(self) -> None:  # pragma: no cover
         self.log(message="Mimecast connector starting", level="info")
 
+        if not self._has_v1_creds:
+            self.log(
+                message=(
+                    "API 1.0 credentials (access_key, secret_key, app_id, app_key) are not "
+                    "configured — all API 1.0 fetchers will be skipped. "
+                    "Only SIEM Stream and Threat Events (API 2.0) will run."
+                ),
+                level="warning",
+            )
+
         while self.running:
             cycle_start = time.time()
+            v1 = self._has_v1_creds
 
             fetchers = [
+                # API 2.0 fetchers — always available when enabled
                 (self.configuration.enable_siem_stream, self._fetch_siem_stream),
-                (self.configuration.enable_siem_logs, self._fetch_siem_logs),
-                (self.configuration.enable_ttp_url_logs, self._fetch_ttp_url_logs),
-                (self.configuration.enable_ttp_attachment_logs, self._fetch_ttp_attachment_logs),
-                (self.configuration.enable_ttp_impersonation_logs, self._fetch_ttp_impersonation_logs),
-                (self.configuration.enable_dlp_logs, self._fetch_dlp_logs),
-                (self.configuration.enable_audit_events, self._fetch_audit_events),
-                (self.configuration.enable_rejection_logs, self._fetch_rejection_logs),
-                (self.configuration.enable_message_release_logs, self._fetch_message_release_logs),
                 (self.configuration.enable_threat_events, self._fetch_threat_events),
-                (self.configuration.enable_threat_intel_feed, self._fetch_threat_intel_feed),
-                (self.configuration.enable_threat_incidents, self._fetch_threat_incidents),
-                (self.configuration.enable_awareness_training, self._fetch_awareness_training),
-                (self.configuration.enable_web_security_logs, self._fetch_web_security_logs),
-                (self.configuration.enable_archive_logs, self._fetch_archive_logs),
+                # API 1.0 fetchers — skipped silently if v1 creds are absent
+                (self.configuration.enable_siem_logs and v1, self._fetch_siem_logs),
+                (self.configuration.enable_ttp_url_logs and v1, self._fetch_ttp_url_logs),
+                (self.configuration.enable_ttp_attachment_logs and v1, self._fetch_ttp_attachment_logs),
+                (self.configuration.enable_ttp_impersonation_logs and v1, self._fetch_ttp_impersonation_logs),
+                (self.configuration.enable_dlp_logs and v1, self._fetch_dlp_logs),
+                (self.configuration.enable_audit_events and v1, self._fetch_audit_events),
+                (self.configuration.enable_rejection_logs and v1, self._fetch_rejection_logs),
+                (self.configuration.enable_message_release_logs and v1, self._fetch_message_release_logs),
+                (self.configuration.enable_threat_intel_feed and v1, self._fetch_threat_intel_feed),
+                (self.configuration.enable_threat_incidents and v1, self._fetch_threat_incidents),
+                (self.configuration.enable_awareness_training and v1, self._fetch_awareness_training),
+                (self.configuration.enable_web_security_logs and v1, self._fetch_web_security_logs),
+                (self.configuration.enable_archive_logs and v1, self._fetch_archive_logs),
             ]
 
             for enabled, fetcher in fetchers:
