@@ -7,8 +7,6 @@ description: >-
   Collects all Mimecast security events: SIEM stream, TTP URL/Attachment/Impersonation,
   DLP, Audit Events, Rejection logs, Threat Events, Threat Intel feeds, and more.
 data_sources:
-  Email gateway: Inbound, outbound and internal email security logs (SIEM stream, TTP URL/Impersonation, rejections)
+  Email gateway: Inbound, outbound and internal email security logs
   Mail server: MTA delivery, process, receipt and journal logs
-  Anti- virus: TTP attachment scan results and AV detections
   Data loss prevention: DLP policy violation logs
-  Third- party application logs: Admin audit events and threat incidents
