@@ -212,9 +212,16 @@ class MimecastConnector(Connector):
             if items:
                 self._push_batch(items, source_name)
 
-            next_token = (
-                payload.get("meta", {}).get("pagination", {}).get("next", {}).get("pageToken")
-            )
+            # Mimecast pagination: "next" may be a dict {"pageToken": "..."} (most endpoints)
+            # or a plain string token (e.g. audit_events). Handle both forms.
+            pagination = payload.get("meta", {}).get("pagination", {})
+            next_val = pagination.get("next")
+            if isinstance(next_val, dict):
+                next_token = next_val.get("pageToken")
+            elif isinstance(next_val, str) and next_val:
+                next_token = next_val
+            else:
+                next_token = None
             if not next_token:
                 # Pagination complete — clear the page-token cursor so the next cycle
                 # starts fresh from the beginning of the new time window.
