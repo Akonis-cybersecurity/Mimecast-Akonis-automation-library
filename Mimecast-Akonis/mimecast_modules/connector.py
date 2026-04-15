@@ -101,13 +101,18 @@ class MimecastConnector(Connector):
     # Event helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _fmt_iso(dt: datetime) -> str:
+        """Format a datetime as Mimecast expects: no microseconds, +0000 suffix."""
+        return dt.strftime("%Y-%m-%dT%H:%M:%S+0000")
+
     def _start_iso(self) -> str:
         """Return an ISO-8601 timestamp `historical_days` ago (for first-run seeding)."""
         dt = datetime.now(timezone.utc) - timedelta(days=self.configuration.historical_days)
-        return dt.isoformat()
+        return self._fmt_iso(dt)
 
     def _now_iso(self) -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return self._fmt_iso(datetime.now(timezone.utc))
 
     def _push_batch(self, events: List[dict], source: str) -> None:
         """Serialize a list of event dicts and push them to the intake."""
@@ -174,7 +179,12 @@ class MimecastConnector(Connector):
 
             try:
                 resp = self.client.post_v1(endpoint, body=body)
-            except (MimecastRateLimitError, MimecastAPIError, MimecastAuthError) as exc:
+            except MimecastAPIError as exc:
+                # 404 = endpoint not available on this tenant (licence or wrong URL) — not a bug
+                level = "warning" if exc.status_code == 404 else "error"
+                self.log(message=f"[{source_name}] API error, skipping this cycle: {exc}", level=level)
+                return
+            except (MimecastRateLimitError, MimecastAuthError) as exc:
                 self.log_exception(exc, message=f"[{source_name}] API error, skipping this cycle")
                 return
 
@@ -477,7 +487,11 @@ class MimecastConnector(Connector):
                 resp = self.client.post_v1(
                     "/api/ttp/threatintel/get-feed", body={"data": [data_entry]}
                 )
-            except (MimecastRateLimitError, MimecastAPIError, MimecastAuthError) as exc:
+            except MimecastAPIError as exc:
+                level = "warning" if exc.status_code == 404 else "error"
+                self.log(message=f"[{source}/{feed_type}] API error: {exc}", level=level)
+                continue
+            except (MimecastRateLimitError, MimecastAuthError) as exc:
                 self.log_exception(exc, message=f"[{source}/{feed_type}] API error")
                 continue
 
