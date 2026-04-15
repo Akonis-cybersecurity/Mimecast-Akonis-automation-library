@@ -14,19 +14,11 @@ class MimecastAccountValidator(AccountValidator):
     def validate(self) -> bool:
         self.log(message="Starting Mimecast credential validation", level="info")
 
-        config = self.module.configuration
+        client_id = self.module.configuration.get("client_id", "")
+        client_secret = self.module.configuration.get("client_secret", "")
+        base_url = self.module.configuration.get("base_url", "https://api.services.mimecast.com")
 
-        # configuration may be a pydantic model (attribute access) or a plain dict
-        if hasattr(config, "client_id"):
-            client_id = config.client_id
-            client_secret = config.client_secret
-            base_url = config.base_url
-        else:
-            client_id = config.get("client_id", "")
-            client_secret = config.get("client_secret", "")
-            base_url = config.get("base_url", "https://api.services.mimecast.com")
-
-        # Unwrap SecretStr if needed (Sekoia SDK may inject it as plain str)
+        # If client_secret is a SecretStr-like object, unwrap it
         if hasattr(client_secret, "get_secret_value"):
             client_secret = client_secret.get_secret_value()
 
