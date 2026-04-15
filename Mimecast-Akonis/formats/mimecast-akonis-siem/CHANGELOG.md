@@ -5,6 +5,12 @@ All notable changes to this intake will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-15
+
+### Added
+- `README.md` at the intake root level (required by Sekoia format structure).
+- `relationships` arrays in all smart-descriptions entries to populate the Sekoia knowledge graph (sender→recipient, IP→sender, file→hash, policy→trigger, etc.).
+
 ## [1.0.0] - 2026-04-10
 
 ### Added
@@ -20,4 +26,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ECS field mapping for all event types.
 - Smart descriptions for all major event patterns.
 
+[1.1.0]: https://github.com/Akonis-cybersecurity/Mimecast-Akonis-automation-library/releases/tag/intake-v1.1.0
 [1.0.0]: https://github.com/Akonis-cybersecurity/Mimecast-Akonis-automation-library/releases/tag/intake-v1.0.0

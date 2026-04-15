@@ -1,15 +1,48 @@
 [
   {
     "value": "Delivered email from {email.from.address} to {email.to.address}",
-    "conditions": [{ "field": "event.dataset", "value": "delivery" }]
+    "conditions": [
+      { "field": "event.dataset", "value": "delivery" },
+      { "field": "email.from.address" },
+      { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "email.to.address",
+        "type": "sent to"
+      },
+      {
+        "source": "source.ip",
+        "target": "email.from.address",
+        "type": "sent from"
+      }
+    ]
   },
   {
-    "value": "Protected {email.to.address} by {event.action} URL {url.original}",
+    "value": "SIEM Stream: {event.action} {email.direction} email from {email.from.address} to {email.to.address}",
     "conditions": [
       { "field": "event.dataset", "value": "url protect" },
       { "field": "event.action" },
-      { "field": "email.to.address" },
-      { "field": "url.original" }
+      { "field": "email.from.address" },
+      { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "url.original",
+        "type": "sent URL"
+      },
+      {
+        "source": "url.original",
+        "target": "email.to.address",
+        "type": "targeted"
+      },
+      {
+        "source": "source.ip",
+        "target": "email.from.address",
+        "type": "sent from"
+      }
     ]
   },
   {
@@ -19,90 +52,237 @@
       { "field": "mimecast.ttp.url.action" },
       { "field": "url.original" },
       { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.to.address",
+        "target": "url.original",
+        "type": "clicked"
+      },
+      {
+        "source": "source.ip",
+        "target": "url.original",
+        "type": "hosted"
+      }
     ]
   },
   {
-    "value": "Attachment scan result {mimecast.ttp.attachment.result} on file {file.name} from {email.from.address}",
+    "value": "Attachment scan {mimecast.ttp.attachment.result}: file {file.name} from {email.from.address} to {email.to.address}",
     "conditions": [
       { "field": "event.dataset", "value": "ttp_attachment" },
       { "field": "mimecast.ttp.attachment.result" },
       { "field": "file.name" },
-      { "field": "email.from.address" }
+      { "field": "email.from.address" },
+      { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "file.name",
+        "type": "sent file"
+      },
+      {
+        "source": "file.name",
+        "target": "email.to.address",
+        "type": "delivered to"
+      },
+      {
+        "source": "file.hash.sha256",
+        "target": "file.name",
+        "type": "hash of"
+      }
     ]
   },
   {
-    "value": "Impersonation attempt {mimecast.ttp.impersonation.action} from {email.from.address} to {email.to.address}",
+    "value": "Impersonation {mimecast.ttp.impersonation.action}: {email.from.address} targeting {email.to.address}",
     "conditions": [
       { "field": "event.dataset", "value": "ttp_impersonation" },
       { "field": "mimecast.ttp.impersonation.action" },
       { "field": "email.from.address" },
       { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "email.to.address",
+        "type": "impersonated"
+      },
+      {
+        "source": "source.ip",
+        "target": "email.from.address",
+        "type": "sent from"
+      }
     ]
   },
   {
-    "value": "DLP policy {mimecast.dlp.policy} triggered: {mimecast.dlp.action} on email from {email.from.address}",
+    "value": "DLP policy {mimecast.dlp.policy} triggered: {mimecast.dlp.action} on email from {email.from.address} to {email.to.address}",
     "conditions": [
       { "field": "event.dataset", "value": "dlp" },
       { "field": "mimecast.dlp.policy" },
       { "field": "mimecast.dlp.action" },
-      { "field": "email.from.address" }
+      { "field": "email.from.address" },
+      { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "mimecast.dlp.policy",
+        "type": "triggered"
+      },
+      {
+        "source": "email.from.address",
+        "target": "email.to.address",
+        "type": "attempted to send to"
+      }
     ]
   },
   {
-    "value": "Audit event {mimecast.audit.event_type} by {source.user.email}",
+    "value": "Audit: {mimecast.audit.event_type} by {source.user.email} from {source.ip}",
+    "conditions": [
+      { "field": "event.dataset", "value": "audit" },
+      { "field": "mimecast.audit.event_type" },
+      { "field": "source.user.email" },
+      { "field": "source.ip" }
+    ],
+    "relationships": [
+      {
+        "source": "source.user.email",
+        "target": "mimecast.audit.event_type",
+        "type": "performed"
+      },
+      {
+        "source": "source.ip",
+        "target": "source.user.email",
+        "type": "connected from"
+      }
+    ]
+  },
+  {
+    "value": "Audit: {mimecast.audit.event_type} by {source.user.email}",
     "conditions": [
       { "field": "event.dataset", "value": "audit" },
       { "field": "mimecast.audit.event_type" },
       { "field": "source.user.email" }
+    ],
+    "relationships": [
+      {
+        "source": "source.user.email",
+        "target": "mimecast.audit.event_type",
+        "type": "performed"
+      }
     ]
   },
   {
-    "value": "Threat {mimecast.threat.type} detected: {mimecast.threat.action} on email from {email.from.address}",
+    "value": "Threat {mimecast.threat.type} ({mimecast.threat.action}): {file.name} from {email.from.address}",
+    "conditions": [
+      { "field": "event.dataset", "value": "threat" },
+      { "field": "mimecast.threat.type" },
+      { "field": "mimecast.threat.action" },
+      { "field": "file.name" },
+      { "field": "email.from.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "file.name",
+        "type": "sent threat"
+      },
+      {
+        "source": "file.hash.sha256",
+        "target": "mimecast.threat.type",
+        "type": "identified as"
+      }
+    ]
+  },
+  {
+    "value": "Threat {mimecast.threat.type} ({mimecast.threat.action}) from {email.from.address}",
     "conditions": [
       { "field": "event.dataset", "value": "threat" },
       { "field": "mimecast.threat.type" },
       { "field": "mimecast.threat.action" },
       { "field": "email.from.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "mimecast.threat.type",
+        "type": "sent threat"
+      }
     ]
   },
   {
-    "value": "{mimecast.siem.rejection.info} for email from {email.from.address}",
+    "value": "Rejection: {mimecast.siem.rejection.info} from {email.from.address}",
     "conditions": [
       { "field": "mimecast.siem.rejection.info" },
       { "field": "email.from.address" }
+    ],
+    "relationships": [
+      {
+        "source": "source.ip",
+        "target": "email.from.address",
+        "type": "sent from"
+      },
+      {
+        "source": "email.from.address",
+        "target": "mimecast.siem.rejection.info",
+        "type": "rejected with"
+      }
     ]
   },
   {
-    "value": "{event.action} {email.direction} email from {email.from.address} to {email.to.address}",
-    "conditions": [
-      { "field": "event.action" },
-      { "field": "email.direction" },
-      { "field": "email.from.address" },
-      { "field": "email.to.address" }
-    ]
-  },
-  {
-    "value": "Spam detected in email from {email.from.address} to {email.to.address}",
+    "value": "Spam detected from {email.from.address} to {email.to.address}",
     "conditions": [
       { "field": "event.dataset", "value": "spam" },
       { "field": "email.from.address" },
       { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "email.to.address",
+        "type": "sent spam to"
+      },
+      {
+        "source": "source.ip",
+        "target": "email.from.address",
+        "type": "sent from"
+      }
     ]
   },
   {
-    "value": "AV detected {mimecast.siem.virus_found} in file {file.name} from {email.from.address}",
+    "value": "AV: {mimecast.siem.virus_found} in {file.name} from {email.from.address}",
     "conditions": [
       { "field": "event.dataset", "value": "av" },
       { "field": "mimecast.siem.virus_found" },
       { "field": "file.name" },
       { "field": "email.from.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "file.name",
+        "type": "sent infected file"
+      },
+      {
+        "source": "file.name",
+        "target": "mimecast.siem.virus_found",
+        "type": "contains"
+      }
     ]
   },
   {
-    "value": "Attachment Protect triggered on file {file.name}",
+    "value": "Attachment Protect triggered on file {file.name} from {email.from.address}",
     "conditions": [
       { "field": "event.dataset", "value": "attachment protect" },
-      { "field": "file.name" }
+      { "field": "file.name" },
+      { "field": "email.from.address" }
+    ],
+    "relationships": [
+      {
+        "source": "email.from.address",
+        "target": "file.name",
+        "type": "sent file"
+      }
     ]
   },
   {
@@ -112,6 +292,13 @@
       { "field": "email.direction" },
       { "field": "source.ip" },
       { "field": "email.to.address" }
+    ],
+    "relationships": [
+      {
+        "source": "source.ip",
+        "target": "email.to.address",
+        "type": "sent to"
+      }
     ]
   }
 ]
