@@ -40,11 +40,6 @@
         "type": "boolean",
         "default": true
       },
-      "enable_siem_logs": {
-        "description": "Enable SIEM MTA Logs (API 1.0)",
-        "type": "boolean",
-        "default": true
-      },
       "enable_ttp_url_logs": {
         "description": "Enable TTP URL Protection logs",
         "type": "boolean",
