@@ -5,12 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.12] - 2026-04-15
-
-### Added
-- `MimecastAccountValidator`: validates OAuth2 credentials against Mimecast `/oauth/token` endpoint.
-- Enabled `supports_validation: true` in manifest so Sekoia can validate module credentials from the UI.
-
 ## [1.0.0] - 2026-04-10
 
 ### Added
@@ -39,5 +33,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Prometheus metrics** per source: collected events, forwarded events, duration, and lag.
 - **Gzip decompression** for binary SIEM log responses.
 
-[0.0.12]: https://github.com/Akonis-cybersecurity/Mimecast-Akonis-automation-library/releases/tag/v0.0.12
 [1.0.0]: https://github.com/Akonis-cybersecurity/Mimecast-Akonis-automation-library/releases/tag/v1.0.0
