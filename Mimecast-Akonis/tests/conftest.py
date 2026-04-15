@@ -29,11 +29,6 @@ def connector(data_storage):
         client_id="test-client-id",
         client_secret="test-client-secret",
         base_url="https://api.services.mimecast.com",
-        access_key="test-access-key",
-        secret_key="dGVzdC1zZWNyZXQta2V5",  # base64-encoded for HMAC tests
-        app_id="test-app-id",
-        app_key="test-app-key",
-        base_url_v1="https://us-api.mimecast.com",
     )
 
     connector = MimecastConnector(module=module, data_path=data_storage)

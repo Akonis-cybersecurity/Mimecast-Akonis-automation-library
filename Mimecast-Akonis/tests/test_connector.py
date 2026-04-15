@@ -2,8 +2,8 @@
 
 Coverage targets:
     1. OAuth2 token acquisition (POST /oauth/token)
-    2. HMAC-SHA1 signature generation
-    3. TTP URL logs with 2-page pagination
+    2. HMAC-SHA1 signature generation (legacy method, retained for disabled fetchers)
+    3. TTP URL logs with 2-page pagination (API 2.0)
     4. SIEM Stream with isCaughtUp=true (stops polling)
     5. OAuth2 token automatic renewal when expired
     6. HTTP 429 retry with backoff
@@ -56,7 +56,12 @@ def test_oauth2_token_acquisition(data_storage):
 # ---------------------------------------------------------------------------
 
 def test_hmac_signature_structure():
-    """HMAC headers contain all required fields and correctly formatted Authorization."""
+    """HMAC headers contain all required fields and correctly formatted Authorization.
+
+    _build_hmac_headers is a legacy method retained for the three fetchers
+    (awareness_training, web_security_logs, archive_logs) that are pending
+    API 2.0 availability and remain disabled by default.
+    """
     import hmac as hmaclib
     import hashlib
 
@@ -67,13 +72,15 @@ def test_hmac_signature_structure():
         base_url="https://api.services.mimecast.com",
         client_id="cid",
         client_secret="csecret",
+    )
+
+    headers = client._build_hmac_headers(
+        "/api/ttp/url/get-logs",
         access_key="myaccesskey",
         secret_key=secret_b64,
         app_id="myappid",
         app_key="myappkey",
     )
-
-    headers = client._build_hmac_headers("/api/ttp/url/get-logs")
 
     # All required HMAC headers must be present
     for key in ("Authorization", "x-mc-date", "x-mc-req-id", "x-mc-app-id"):
@@ -122,9 +129,10 @@ def test_fetch_ttp_url_logs_pagination(connector):
     }
 
     with req_mock_module.Mocker() as m:
-        m.post("https://us-api.mimecast.com/api/ttp/url/get-logs", [{"json": page1}, {"json": page2}])
+        m.post("https://api.services.mimecast.com/api/ttp/url/get-logs", [{"json": page1}, {"json": page2}])
 
-        connector._fetch_ttp_url_logs()
+        with patch.object(connector.client, "_get_oauth_token", return_value="mock_token"):
+            connector._fetch_ttp_url_logs()
 
     # Two batches pushed (one per page)
     assert connector.push_events_to_intakes.call_count == 2
@@ -250,8 +258,9 @@ def test_cursor_saved_after_fetch(connector):
     }
 
     with req_mock_module.Mocker() as m:
-        m.post("https://us-api.mimecast.com/api/ttp/url/get-logs", json=page)
-        connector._fetch_ttp_url_logs()
+        m.post("https://api.services.mimecast.com/api/ttp/url/get-logs", json=page)
+        with patch.object(connector.client, "_get_oauth_token", return_value="mock_token"):
+            connector._fetch_ttp_url_logs()
 
     # The timestamp cursor must have been written
     saved = connector._get_cursor("ttp_url_logs_cursor")
@@ -278,17 +287,19 @@ def test_cursor_reloaded_between_calls(connector):
         return page
 
     with req_mock_module.Mocker() as m:
-        m.post("https://us-api.mimecast.com/api/audit/get-audit-events", json=request_callback)
+        m.post("https://api.services.mimecast.com/api/audit/get-audit-events", json=request_callback)
 
         # First call — seeds the cursor with a start timestamp
-        connector._fetch_audit_events()
+        with patch.object(connector.client, "_get_oauth_token", return_value="mock_token"):
+            connector._fetch_audit_events()
 
     # Manually set a known cursor to verify it is re-used
     connector._set_cursor("audit_events_cursor", "2026-04-10T11:00:00+00:00")
 
     with req_mock_module.Mocker() as m:
-        m.post("https://us-api.mimecast.com/api/audit/get-audit-events", json=page)
-        connector._fetch_audit_events()
+        m.post("https://api.services.mimecast.com/api/audit/get-audit-events", json=page)
+        with patch.object(connector.client, "_get_oauth_token", return_value="mock_token"):
+            connector._fetch_audit_events()
 
         # Second call's request body must contain the cursor timestamp as startDateTime
     assert connector._get_cursor("audit_events_cursor") is not None

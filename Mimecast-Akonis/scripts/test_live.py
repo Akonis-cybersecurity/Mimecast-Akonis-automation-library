@@ -12,20 +12,14 @@ Usage (run from the Mimecast-Akonis/ directory):
     python scripts/test_live.py --max-pages 3   # pages per paginated fetcher
 
 Expected .env keys:
-    MIMECAST_CLIENT_ID       OAuth2 client ID  (API 2.0) — required
-    MIMECAST_CLIENT_SECRET   OAuth2 client secret        — required
-    MIMECAST_ACCESS_KEY      API 1.0 access key          — required for HMAC tests
-    MIMECAST_SECRET_KEY      API 1.0 secret key (base64) — required for HMAC tests
-    MIMECAST_APP_ID          API 1.0 application ID      — required for HMAC tests
-    MIMECAST_APP_KEY         API 1.0 application key     — required for HMAC tests
-    MIMECAST_BASE_URL        API 2.0 base URL            — default https://api.services.mimecast.com
-    MIMECAST_BASE_URL_V1     API 1.0 base URL (region)  — default https://us-api.mimecast.com
+    MIMECAST_CLIENT_ID       OAuth2 client ID  — required
+    MIMECAST_CLIENT_SECRET   OAuth2 client secret — required
+    MIMECAST_BASE_URL        API base URL — default https://api.services.mimecast.com
 """
 
 from __future__ import annotations
 
 import argparse
-import gzip
 import json
 import os
 import sys
@@ -182,7 +176,6 @@ class FetchResult:
     status: str = "OK"
     error: str = ""
     elapsed: float = 0.0
-    skipped: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -215,30 +208,6 @@ def test_oauth2(client: MimecastClient) -> None:
         sys.exit(1)
 
 
-def test_hmac_account(client: MimecastClient) -> None:
-    """
-    Test HMAC-SHA1 authentication by calling POST /api/account/get-account
-    and printing the account name.
-    """
-    print(f"\n{bold('[ AUTH ] HMAC-SHA1 (API 1.0)')}")
-    if not all([client._access_key, client._secret_key, client._app_id, client._app_key]):
-        print(f"  {yellow('⚠')} HMAC credentials not configured — skipping HMAC test")
-        return
-
-    t0 = time.time()
-    try:
-        resp = client.post_v1("/api/account/get-account", body={"data": [{}]})
-        payload = resp.json()
-        # The API returns a list under "data"; the first item has account details.
-        accounts = payload.get("data", [])
-        account_name = "—"
-        if accounts and isinstance(accounts[0], dict):
-            account_name = accounts[0].get("accountName") or accounts[0].get("name") or "—"
-        print(f"  {green('✓')} HMAC OK — account: {bold(account_name)}  [{time.time() - t0:.2f}s]")
-    except (MimecastAuthError, MimecastAPIError, MimecastRateLimitError) as exc:
-        print(f"  {red('✗')} HMAC FAILED: {exc}")
-
-
 # ---------------------------------------------------------------------------
 # Individual fetcher tests
 # — Each function makes the same HTTP calls as the connector but collects events
@@ -246,14 +215,14 @@ def test_hmac_account(client: MimecastClient) -> None:
 # — Only the first `max_pages` pages are fetched to keep the test fast.
 # ---------------------------------------------------------------------------
 
-def _paginated_v1(
+def _paginated_v2(
     client: MimecastClient,
     endpoint: str,
     data_payload: dict,
     chunk_size: int,
     max_pages: int,
 ) -> List[dict]:
-    """Replicate _fetch_paginated_v1 logic, returning collected items."""
+    """Replicate _fetch_paginated_v2 logic, returning collected items."""
     items: List[dict] = []
     page_token: Optional[str] = None
     page = 0
@@ -264,7 +233,7 @@ def _paginated_v1(
             meta["pagination"]["pageToken"] = page_token
 
         body = {"meta": meta, "data": [data_payload]}
-        resp = client.post_v1(endpoint, body=body)
+        resp = client.post_v2(endpoint, json=body)
         payload = resp.json()
 
         for result in payload.get("data", []):
@@ -280,9 +249,13 @@ def _paginated_v1(
                 if not found:
                     items.append(result)
 
-        next_token = (
-            payload.get("meta", {}).get("pagination", {}).get("next", {}).get("pageToken")
-        )
+        next_val = payload.get("meta", {}).get("pagination", {}).get("next")
+        if isinstance(next_val, dict):
+            next_token = next_val.get("pageToken")
+        elif isinstance(next_val, str) and next_val:
+            next_token = next_val
+        else:
+            next_token = None
         page += 1
         if not next_token:
             break
@@ -336,41 +309,8 @@ def fetch_siem_stream(client: MimecastClient, days: int, max_pages: int) -> List
     return events
 
 
-def fetch_siem_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    """Binary/gzip SIEM log stream — all log types, first page only per type."""
-    events: List[dict] = []
-    for log_type in ("MTA", "receipt", "process", "jrnl", "delivery"):
-        data_entry: dict = {"type": log_type, "compress": True}
-        try:
-            resp = client.post_v1_raw("/api/audit/get-siem-logs", body={"data": [data_entry]})
-        except (MimecastAuthError, MimecastAPIError, MimecastRateLimitError):
-            continue
-        raw = resp.content
-        if not raw:
-            continue
-        try:
-            if raw[:2] == b"\x1f\x8b":
-                raw = gzip.decompress(raw)
-        except Exception:
-            pass
-        for line in raw.decode("utf-8", errors="replace").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-                if isinstance(obj, dict):
-                    obj["_log_type"] = log_type
-                    events.append(obj)
-                else:
-                    events.append({"message": line, "_log_type": log_type})
-            except json.JSONDecodeError:
-                events.append({"message": line, "_log_type": log_type})
-    return events
-
-
 def fetch_ttp_url_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/ttp/url/get-logs",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso(),
          "route": "all", "scanResult": "all"},
@@ -379,7 +319,7 @@ def fetch_ttp_url_logs(client: MimecastClient, days: int, max_pages: int) -> Lis
 
 
 def fetch_ttp_attachment_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/ttp/attachment/get-logs",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
         chunk_size=100, max_pages=max_pages,
@@ -387,7 +327,7 @@ def fetch_ttp_attachment_logs(client: MimecastClient, days: int, max_pages: int)
 
 
 def fetch_ttp_impersonation_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/ttp/impersonation/get-logs",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso(),
          "taggedMalicious": True},
@@ -396,7 +336,7 @@ def fetch_ttp_impersonation_logs(client: MimecastClient, days: int, max_pages: i
 
 
 def fetch_dlp_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/dlp/get-logs",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
         chunk_size=100, max_pages=max_pages,
@@ -404,7 +344,7 @@ def fetch_dlp_logs(client: MimecastClient, days: int, max_pages: int) -> List[di
 
 
 def fetch_audit_events(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/audit/get-audit-events",
         {"startDateTime": _start_iso(days), "endDateTime": _now_iso()},
         chunk_size=100, max_pages=max_pages,
@@ -412,7 +352,7 @@ def fetch_audit_events(client: MimecastClient, days: int, max_pages: int) -> Lis
 
 
 def fetch_rejection_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/gateway/get-rejections",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
         chunk_size=100, max_pages=max_pages,
@@ -420,7 +360,7 @@ def fetch_rejection_logs(client: MimecastClient, days: int, max_pages: int) -> L
 
 
 def fetch_message_release_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/gateway/get-message-release-logs",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
         chunk_size=100, max_pages=max_pages,
@@ -454,9 +394,9 @@ def fetch_threat_intel_feed(client: MimecastClient, days: int, max_pages: int) -
     items: List[dict] = []
     for feed_type in ("malware_customer", "malware_grid"):
         try:
-            resp = client.post_v1(
+            resp = client.post_v2(
                 "/api/ttp/threatintel/get-feed",
-                body={"data": [{"feedType": feed_type}]},
+                json={"data": [{"feedType": feed_type}]},
             )
         except (MimecastAuthError, MimecastAPIError, MimecastRateLimitError):
             continue
@@ -472,7 +412,7 @@ def fetch_threat_intel_feed(client: MimecastClient, days: int, max_pages: int) -
 
 
 def fetch_threat_incidents(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
-    return _paginated_v1(
+    return _paginated_v2(
         client, "/api/ttp/remediation/find-incidents",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
         chunk_size=100, max_pages=max_pages,
@@ -535,7 +475,7 @@ def fetch_archive_logs(client: MimecastClient, days: int, max_pages: int) -> Lis
         "/api/audit/get-archive-message-view-logs",
     ):
         items.extend(
-            _paginated_v1(
+            _paginated_v2(
                 client, endpoint,
                 {"from": _start_iso(days), "to": _now_iso()},
                 chunk_size=100, max_pages=max_pages,
@@ -548,26 +488,26 @@ def fetch_archive_logs(client: MimecastClient, days: int, max_pages: int) -> Lis
 # Fetcher registry
 # ---------------------------------------------------------------------------
 
-# Each entry: (name, function, requires_hmac)
+# Each entry: (name, function)
 FETCHER_REGISTRY = [
-    ("siem_stream",           fetch_siem_stream,           False),
-    ("siem_logs",             fetch_siem_logs,             True),
-    ("ttp_url_logs",          fetch_ttp_url_logs,          True),
-    ("ttp_attachment_logs",   fetch_ttp_attachment_logs,   True),
-    ("ttp_impersonation_logs",fetch_ttp_impersonation_logs,True),
-    ("dlp_logs",              fetch_dlp_logs,              True),
-    ("audit_events",          fetch_audit_events,          True),
-    ("rejection_logs",        fetch_rejection_logs,        True),
-    ("message_release_logs",  fetch_message_release_logs,  True),
-    ("threat_events",         fetch_threat_events,         False),
-    ("threat_intel_feed",     fetch_threat_intel_feed,     True),
-    ("threat_incidents",      fetch_threat_incidents,      True),
-    ("awareness_training",    fetch_awareness_training,    True),
-    ("web_security_logs",     fetch_web_security_logs,     True),
-    ("archive_logs",          fetch_archive_logs,          True),
+    ("siem_stream",            fetch_siem_stream),
+    ("ttp_url_logs",           fetch_ttp_url_logs),
+    ("ttp_attachment_logs",    fetch_ttp_attachment_logs),
+    ("ttp_impersonation_logs", fetch_ttp_impersonation_logs),
+    ("dlp_logs",               fetch_dlp_logs),
+    ("audit_events",           fetch_audit_events),
+    ("rejection_logs",         fetch_rejection_logs),
+    ("message_release_logs",   fetch_message_release_logs),
+    ("threat_events",          fetch_threat_events),
+    ("threat_intel_feed",      fetch_threat_intel_feed),
+    ("threat_incidents",       fetch_threat_incidents),
+    # Pending API 2.0 availability — disabled by default in the connector
+    ("awareness_training",     fetch_awareness_training),
+    ("web_security_logs",      fetch_web_security_logs),
+    ("archive_logs",           fetch_archive_logs),
 ]
 
-FETCHER_NAMES = [name for name, _, _ in FETCHER_REGISTRY]
+FETCHER_NAMES = [name for name, _ in FETCHER_REGISTRY]
 
 
 # ---------------------------------------------------------------------------
@@ -610,19 +550,14 @@ def print_summary(results: List[FetchResult]) -> None:
     ok_count = 0
     total_events = 0
     for r in results:
-        if r.skipped:
-            status_str = yellow("SKIP (no HMAC creds)")
-        elif r.status == "OK":
-            status_str = green(f"✓ OK")
+        if r.status == "OK":
+            status_str = green("✓ OK")
             ok_count += 1
             total_events += r.count
         else:
             status_str = red(f"✗ {_trunc(r.error, W_STATUS - 2)}")
 
-        # Strip ANSI codes for width calculation, pad manually
-        raw_status = r.error[:W_STATUS] if r.status == "ERROR" else ""
-        visible_status = f"✓ OK" if r.status == "OK" and not r.skipped else \
-                         ("SKIP (no HMAC creds)" if r.skipped else f"✗ {_trunc(r.error, W_STATUS - 2)}")
+        visible_status = "✓ OK" if r.status == "OK" else f"✗ {_trunc(r.error, W_STATUS - 2)}"
         pad = W_STATUS - len(visible_status)
         padded_status = status_str + (" " * pad)
 
@@ -634,11 +569,9 @@ def print_summary(results: List[FetchResult]) -> None:
 
     print(bot)
     errors = [r for r in results if r.status == "ERROR"]
-    skipped = [r for r in results if r.skipped]
     print(
-        f"\n  {bold('Total:')} {ok_count}/{len(results) - len(skipped)} fetchers OK"
+        f"\n  {bold('Total:')} {ok_count}/{len(results)} fetchers OK"
         f" — {bold(str(total_events))} events collected"
-        + (f" — {yellow(str(len(skipped)))} skipped" if skipped else "")
         + (f" — {red(str(len(errors)))} errors" if errors else "")
     )
 
@@ -652,16 +585,11 @@ def print_summary(results: List[FetchResult]) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
-def build_client(hmac_available: bool) -> MimecastClient:
+def build_client() -> MimecastClient:
     return MimecastClient(
         base_url=_optional("MIMECAST_BASE_URL", "https://api.services.mimecast.com"),
         client_id=_require("MIMECAST_CLIENT_ID"),
         client_secret=_require("MIMECAST_CLIENT_SECRET"),
-        base_url_v1=_optional("MIMECAST_BASE_URL_V1", "https://us-api.mimecast.com"),
-        access_key=_optional("MIMECAST_ACCESS_KEY") or None,
-        secret_key=_optional("MIMECAST_SECRET_KEY") or None,
-        app_id=_optional("MIMECAST_APP_ID") or None,
-        app_key=_optional("MIMECAST_APP_KEY") or None,
     )
 
 
@@ -694,27 +622,17 @@ def main() -> None:
     if env_file:
         print(dim(f"Loaded .env from {args.env or '[auto-detected]'}"))
 
-    hmac_available = all([
-        _optional("MIMECAST_ACCESS_KEY"),
-        _optional("MIMECAST_SECRET_KEY"),
-        _optional("MIMECAST_APP_ID"),
-        _optional("MIMECAST_APP_KEY"),
-    ])
-
-    client = build_client(hmac_available)
+    client = build_client()
 
     print(bold(f"\n{'='*60}"))
     print(bold("  Mimecast Connector — Live API Test"))
     print(bold(f"{'='*60}"))
-    print(f"  Base URL (v2): {_optional('MIMECAST_BASE_URL', 'https://api.services.mimecast.com')}")
-    print(f"  Base URL (v1): {_optional('MIMECAST_BASE_URL_V1', 'https://us-api.mimecast.com')}")
-    print(f"  Window:        last {args.days} day(s)")
-    print(f"  Max pages:     {args.max_pages}")
-    print(f"  HMAC creds:    {'yes' if hmac_available else yellow('no — v1 fetchers will be skipped')}")
+    print(f"  Base URL:  {_optional('MIMECAST_BASE_URL', 'https://api.services.mimecast.com')}")
+    print(f"  Window:    last {args.days} day(s)")
+    print(f"  Max pages: {args.max_pages}")
 
-    # ---- Auth tests ---------------------------------------------------------
+    # ---- Auth test ----------------------------------------------------------
     test_oauth2(client)
-    test_hmac_account(client)
 
     # ---- Determine which fetchers to run ------------------------------------
     selected: Optional[List[str]] = None
@@ -728,13 +646,8 @@ def main() -> None:
     print(f"\n{bold('[ FETCHERS ]')}")
     results: List[FetchResult] = []
 
-    for name, fn, requires_hmac in FETCHER_REGISTRY:
+    for name, fn in FETCHER_REGISTRY:
         if selected and name not in selected:
-            continue
-        if requires_hmac and not hmac_available:
-            r = FetchResult(name=name, skipped=True)
-            print(f"  {yellow('⊘')} {name} — skipped (no HMAC credentials)")
-            results.append(r)
             continue
         result = _run(name, lambda f=fn: f(client, args.days, args.max_pages))
         results.append(result)

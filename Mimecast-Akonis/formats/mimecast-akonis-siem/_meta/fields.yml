@@ -191,3 +191,49 @@ mimecast.threat.action:
   description: The action taken on the detected threat.
   name: mimecast.threat.action
   type: keyword
+
+# --- Message Release ---
+
+mimecast.release.operator:
+  description: The email address of the administrator who released the message.
+  name: mimecast.release.operator
+  type: keyword
+
+mimecast.release.reason:
+  description: The reason given when releasing the message from hold.
+  name: mimecast.release.reason
+  type: keyword
+
+mimecast.release.hold_reason:
+  description: The reason the message was originally placed on hold.
+  name: mimecast.release.hold_reason
+  type: keyword
+
+# --- Threat Intel Feed ---
+
+mimecast.intel.indicator_type:
+  description: The IOC indicator type as returned by Mimecast (Domain, IP, URL, Hash, Sender).
+  name: mimecast.intel.indicator_type
+  type: keyword
+
+# --- Threat Incidents ---
+
+mimecast.incident.id:
+  description: Unique identifier of the remediation incident.
+  name: mimecast.incident.id
+  type: keyword
+
+mimecast.incident.type:
+  description: The type of remediation incident (url, attachment, impersonation, etc.).
+  name: mimecast.incident.type
+  type: keyword
+
+mimecast.incident.affected_message_count:
+  description: Number of messages affected by this incident.
+  name: mimecast.incident.affected_message_count
+  type: long
+
+mimecast.incident.reason:
+  description: The reason the incident was raised.
+  name: mimecast.incident.reason
+  type: keyword

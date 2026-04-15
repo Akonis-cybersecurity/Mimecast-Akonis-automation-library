@@ -40,23 +40,24 @@ stages:
 
       # ---------------------------------------------------------------
       # SIEM Stream — routed by `type` field
+      # Exclusions: threat_intel events have `value`; threat_incidents have `recipientAddresses`
       # ---------------------------------------------------------------
       - set:
           event.dataset: "{{parse_event.message.type}}"
           event.category: ["email"]
           event.type: ["info"]
-        filter: "{{parse_event.message.get('type') != None}}"
+        filter: "{{parse_event.message.get('type') != None and parse_event.message.get('value') == None and parse_event.message.get('recipientAddresses') == None}}"
 
       # Security event types → add threat category + alert kind
       - set:
           event.category: ["email", "threat"]
           event.kind: "alert"
-        filter: "{{parse_event.message.get('type') in ('url protect', 'av', 'attachment protect', 'impersonation protect')}}"
+        filter: "{{parse_event.message.get('type') in ('url protect', 'av', 'attachment protect', 'impersonation protect') and parse_event.message.get('value') == None}}"
 
       # Blocked / rejected actions → denied
       - set:
           event.type: ["denied"]
-        filter: "{{parse_event.message.get('type') != None and parse_event.message.get('action') in ('Blocked', 'Rej', 'Block')}}"
+        filter: "{{parse_event.message.get('type') != None and parse_event.message.get('value') == None and parse_event.message.get('recipientAddresses') == None and parse_event.message.get('action') in ('Blocked', 'Rej', 'Block')}}"
 
       # ---------------------------------------------------------------
       # SIEM Stream — ECS fields
@@ -342,6 +343,113 @@ stages:
       - set:
           event.type: ["denied"]
         filter: "{{parse_event.message.get('threatType') != None and parse_event.message.get('action') in ('block', 'Block')}}"
+
+      # ---------------------------------------------------------------
+      # Rejection logs — /api/gateway/get-rejections
+      # Discriminator: `rejectTime` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "rejection"
+          event.category: ["email"]
+          event.type: ["denied"]
+          event.kind: "event"
+          "@timestamp": "{{parse_event.message.rejectTime}}"
+          mimecast.siem.rejection.code: "{{parse_event.message.rejectionCode}}"
+          mimecast.siem.rejection.info: "{{parse_event.message.rejectionInfo}}"
+          email.from.address: ["{{parse_event.message.senderAddress}}"]
+          source.user.email: "{{parse_event.message.senderAddress}}"
+          source.user.domain: "{{parse_event.message.senderAddress.split('@')[-1]}}"
+          email.to.address: ["{{parse_event.message.recipientAddress}}"]
+          destination.user.email: "{{parse_event.message.recipientAddress}}"
+          destination.user.domain: "{{parse_event.message.recipientAddress.split('@')[-1]}}"
+          source.ip: "{{parse_event.message.senderIp}}"
+          source.address: "{{parse_event.message.senderIp}}"
+          email.subject: "{{parse_event.message.subject}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('rejectTime') != None}}"
+
+      # ---------------------------------------------------------------
+      # Message Release logs — /api/gateway/get-message-release-logs
+      # Discriminator: `releaseTime` field
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "message_release"
+          event.category: ["email"]
+          event.type: ["allowed"]
+          event.kind: "event"
+          "@timestamp": "{{parse_event.message.releaseTime}}"
+          mimecast.release.operator: "{{parse_event.message.operator}}"
+          mimecast.release.reason: "{{parse_event.message.reason}}"
+          mimecast.release.hold_reason: "{{parse_event.message.holdReason}}"
+          email.from.address: ["{{parse_event.message.fromEnvelope}}"]
+          source.user.email: "{{parse_event.message.fromEnvelope}}"
+          source.user.domain: "{{parse_event.message.fromEnvelope.split('@')[-1]}}"
+          email.to.address: ["{{parse_event.message.to}}"]
+          destination.user.email: "{{parse_event.message.to}}"
+          destination.user.domain: "{{parse_event.message.to.split('@')[-1]}}"
+          email.subject: "{{parse_event.message.subject}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('releaseTime') != None}}"
+
+      # ---------------------------------------------------------------
+      # Threat Intel Feed — /api/ttp/threatintel/get-feed
+      # Discriminator: `value` field present (IOC items)
+      # type = Domain | IP | URL | Hash | Sender
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "threat_intel"
+          event.category: ["threat"]
+          event.type: ["indicator"]
+          event.kind: "indicator"
+          mimecast.intel.indicator_type: "{{parse_event.message.type}}"
+          threat.indicator.name: "{{parse_event.message.value}}"
+        filter: "{{parse_event.message.get('value') != None and parse_event.message.get('type') != None}}"
+
+      - set:
+          threat.indicator.type: "domain-name"
+          url.domain: "{{parse_event.message.value}}"
+        filter: "{{parse_event.message.get('value') != None and parse_event.message.get('type') == 'Domain'}}"
+
+      - set:
+          threat.indicator.type: "ipv4-addr"
+          threat.indicator.ip: "{{parse_event.message.value}}"
+          related.ip: ["{{parse_event.message.value}}"]
+        filter: "{{parse_event.message.get('value') != None and parse_event.message.get('type') == 'IP'}}"
+
+      - set:
+          threat.indicator.type: "url"
+          url.original: "{{parse_event.message.value}}"
+        filter: "{{parse_event.message.get('value') != None and parse_event.message.get('type') == 'URL'}}"
+
+      - set:
+          threat.indicator.type: "file"
+          file.hash.sha256: "{{parse_event.message.value}}"
+        filter: "{{parse_event.message.get('value') != None and parse_event.message.get('type') == 'Hash'}}"
+
+      - set:
+          threat.indicator.type: "email-addr"
+        filter: "{{parse_event.message.get('value') != None and parse_event.message.get('type') == 'Sender'}}"
+
+      # ---------------------------------------------------------------
+      # Threat Incidents — /api/ttp/remediation/find-incidents
+      # Discriminator: `recipientAddresses` field (list, unique to incidents)
+      # ---------------------------------------------------------------
+      - set:
+          event.dataset: "threat_incident"
+          event.category: ["email", "threat"]
+          event.type: ["indicator"]
+          event.kind: "alert"
+          "@timestamp": "{{parse_event.message.timestamp | to_rfc3339}}"
+          mimecast.incident.id: "{{parse_event.message.id}}"
+          mimecast.incident.type: "{{parse_event.message.type}}"
+          mimecast.incident.affected_message_count: "{{parse_event.message.affectedMessageCount}}"
+          mimecast.incident.reason: "{{parse_event.message.reason}}"
+          email.from.address: ["{{parse_event.message.senderAddress}}"]
+          source.user.email: "{{parse_event.message.senderAddress}}"
+          source.user.domain: "{{parse_event.message.senderAddress.split('@')[-1]}}"
+          email.subject: "{{parse_event.message.subject}}"
+          organization.id: "{{parse_event.message.accountId}}"
+        filter: "{{parse_event.message.get('recipientAddresses') != None}}"
 
       # ---------------------------------------------------------------
       # related.* — ECS aggregation fields (populated last)

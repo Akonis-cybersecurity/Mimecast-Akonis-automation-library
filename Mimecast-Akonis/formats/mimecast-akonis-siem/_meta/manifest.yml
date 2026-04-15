@@ -5,8 +5,8 @@ name: Mimecast SIEM
 slug: mimecast-akonis-siem
 description: >-
   Collects all Mimecast security events: SIEM stream, TTP URL/Attachment/Impersonation,
-  DLP, Audit Events, Rejection logs, Threat Events, Threat Intel feeds, and more.
+  DLP, Audit Events, Rejection logs, Message Release logs, Threat Events,
+  Threat Intel feeds, Threat Incidents, and more.
 data_sources:
   Email gateway: Inbound, outbound and internal email security logs
-  Mail server: MTA delivery, process, receipt and journal logs
   Data loss prevention: DLP policy violation logs

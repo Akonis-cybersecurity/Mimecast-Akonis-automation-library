@@ -1,0 +1,42 @@
+{
+  "input": {
+    "message": "{\"rejectTime\": \"2026-04-10T10:00:00+0000\", \"senderAddress\": \"spammer@evil.com\", \"recipientAddress\": \"user@corp.com\", \"senderIp\": \"192.168.1.100\", \"rejectionCode\": \"550\", \"rejectionInfo\": \"5.7.1 Policy rejection for this sender\", \"subject\": \"Win a prize!\", \"accountId\": \"ANONYMIZED\"}"
+  },
+  "expected": {
+    "message": "{\"rejectTime\": \"2026-04-10T10:00:00+0000\", \"senderAddress\": \"spammer@evil.com\", \"recipientAddress\": \"user@corp.com\", \"senderIp\": \"192.168.1.100\", \"rejectionCode\": \"550\", \"rejectionInfo\": \"5.7.1 Policy rejection for this sender\", \"subject\": \"Win a prize!\", \"accountId\": \"ANONYMIZED\"}",
+    "@timestamp": "2026-04-10T10:00:00+0000",
+    "event": {
+      "category": ["email"],
+      "dataset": "rejection",
+      "kind": "event",
+      "provider": "Mimecast",
+      "type": ["denied"]
+    },
+    "email": {
+      "from": { "address": ["spammer@evil.com"] },
+      "subject": "Win a prize!",
+      "to": { "address": ["user@corp.com"] }
+    },
+    "mimecast": {
+      "siem": {
+        "rejection": {
+          "code": "550",
+          "info": "5.7.1 Policy rejection for this sender"
+        }
+      }
+    },
+    "organization": { "id": "ANONYMIZED" },
+    "source": {
+      "address": "192.168.1.100",
+      "ip": "192.168.1.100",
+      "user": { "domain": "evil.com", "email": "spammer@evil.com" }
+    },
+    "destination": {
+      "user": { "domain": "corp.com", "email": "user@corp.com" }
+    },
+    "related": {
+      "ip": ["192.168.1.100"],
+      "user": ["spammer@evil.com", "user@corp.com"]
+    }
+  }
+}

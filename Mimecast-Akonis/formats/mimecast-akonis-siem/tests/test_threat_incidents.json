@@ -1,0 +1,35 @@
+{
+  "input": {
+    "message": "{\"id\": \"inc-001\", \"type\": \"url\", \"senderAddress\": \"attacker@evil.com\", \"recipientAddresses\": [\"victim@corp.com\"], \"subject\": \"Click here now\", \"timestamp\": 1744286400000, \"affectedMessageCount\": 1, \"reason\": \"malicious_url\", \"accountId\": \"ANONYMIZED\"}"
+  },
+  "expected": {
+    "message": "{\"id\": \"inc-001\", \"type\": \"url\", \"senderAddress\": \"attacker@evil.com\", \"recipientAddresses\": [\"victim@corp.com\"], \"subject\": \"Click here now\", \"timestamp\": 1744286400000, \"affectedMessageCount\": 1, \"reason\": \"malicious_url\", \"accountId\": \"ANONYMIZED\"}",
+    "@timestamp": "2026-04-10T08:00:00Z",
+    "event": {
+      "category": ["email", "threat"],
+      "dataset": "threat_incident",
+      "kind": "alert",
+      "provider": "Mimecast",
+      "type": ["indicator"]
+    },
+    "email": {
+      "from": { "address": ["attacker@evil.com"] },
+      "subject": "Click here now"
+    },
+    "mimecast": {
+      "incident": {
+        "affected_message_count": 1,
+        "id": "inc-001",
+        "reason": "malicious_url",
+        "type": "url"
+      }
+    },
+    "organization": { "id": "ANONYMIZED" },
+    "source": {
+      "user": { "domain": "evil.com", "email": "attacker@evil.com" }
+    },
+    "related": {
+      "user": ["attacker@evil.com"]
+    }
+  }
+}

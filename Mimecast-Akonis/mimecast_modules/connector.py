@@ -1,12 +1,10 @@
 """Mimecast SIEM connector — polls all Mimecast security event sources and forwards them to Sekoia."""
 
-import gzip
-import io
 import json
 import time
 from datetime import datetime, timedelta, timezone
 from functools import cached_property
-from typing import Generator, List, Optional
+from typing import List, Optional
 
 from sekoia_automation.connector import Connector, DefaultConnectorConfiguration
 from sekoia_automation.storage import PersistentJSON
@@ -26,7 +24,6 @@ class MimecastConnectorConfiguration(DefaultConnectorConfiguration):
 
     # ---- Feature flags ----
     enable_siem_stream: bool = True
-    enable_siem_logs: bool = True
     enable_ttp_url_logs: bool = True
     enable_ttp_attachment_logs: bool = True
     enable_ttp_impersonation_logs: bool = True
@@ -39,7 +36,7 @@ class MimecastConnectorConfiguration(DefaultConnectorConfiguration):
     enable_threat_incidents: bool = True
     enable_awareness_training: bool = False  # daily polling, off by default
     enable_web_security_logs: bool = False   # requires Web Security licence
-    enable_archive_logs: bool = False        # requires Archive licence
+    enable_archive_logs: bool = False        # endpoint not available in API 2.0
 
 
 class MimecastConnector(Connector):
@@ -66,23 +63,12 @@ class MimecastConnector(Connector):
         return val.get_secret_value() if hasattr(val, "get_secret_value") else val
 
     @cached_property
-    def _has_v1_creds(self) -> bool:
-        """True if all API 1.0 credentials are configured."""
-        mod = self.module.configuration
-        return all([mod.access_key, mod.secret_key, mod.app_id, mod.app_key])
-
-    @cached_property
     def client(self) -> MimecastClient:
         mod = self.module.configuration
         return MimecastClient(
             base_url=mod.base_url,
             client_id=mod.client_id,
             client_secret=self._secret(mod.client_secret),
-            base_url_v1=mod.base_url_v1,
-            access_key=mod.access_key,
-            secret_key=self._secret(mod.secret_key) if mod.secret_key else None,
-            app_id=mod.app_id,
-            app_key=self._secret(mod.app_key) if mod.app_key else None,
         )
 
     # ------------------------------------------------------------------
@@ -149,7 +135,7 @@ class MimecastConnector(Connector):
     # Generic paginated fetcher helpers
     # ------------------------------------------------------------------
 
-    def _fetch_paginated_v1(
+    def _fetch_paginated_v2(
         self,
         endpoint: str,
         data_payload: dict,
@@ -157,7 +143,7 @@ class MimecastConnector(Connector):
         source_name: str,
     ) -> None:
         """
-        Generic helper for API 1.0 endpoints that paginate via meta.pagination.next.pageToken.
+        Generic helper for API 2.0 endpoints that paginate via meta.pagination.next.pageToken.
 
         The caller provides the inner `data` list item dict (e.g. date range, filters).
         This method drives pagination, collects events, and updates the cursor.
@@ -178,7 +164,7 @@ class MimecastConnector(Connector):
             body = {"meta": meta, "data": [data_payload]}
 
             try:
-                resp = self.client.post_v1(endpoint, body=body)
+                resp = self.client.post_v2(endpoint, json=body)
             except MimecastAPIError as exc:
                 # 404 = endpoint not available on this tenant (licence or wrong URL) — not a bug
                 level = "warning" if exc.status_code == 404 else "error"
@@ -273,69 +259,8 @@ class MimecastConnector(Connector):
             if not next_token:
                 break
 
-    def _fetch_siem_logs(self) -> None:
-        """1.2 SIEM Logs (API 1.0) — MTA logs as compressed binary stream."""
-        source = "siem_logs"
-        for log_type in ("MTA", "receipt", "process", "jrnl", "delivery"):
-            if not self.running:
-                return
-            cursor_name = f"siem_logs_token_{log_type}"
-            token = self._get_cursor(cursor_name)
-
-            data_entry: dict = {"type": log_type, "compress": True}
-            if token:
-                data_entry["token"] = token
-
-            try:
-                resp = self.client.post_v1_raw(
-                    "/api/audit/get-siem-logs",
-                    body={"data": [data_entry]},
-                )
-            except (MimecastRateLimitError, MimecastAPIError, MimecastAuthError) as exc:
-                self.log_exception(exc, message=f"[{source}/{log_type}] API error")
-                continue
-
-            # Save the new token from response header
-            new_token = resp.headers.get("mc-siem-token")
-            if new_token:
-                self._set_cursor(cursor_name, new_token)
-
-            content_type = resp.headers.get("Content-Type", "")
-            raw = resp.content
-            if not raw:
-                continue
-
-            # Decompress if gzip
-            try:
-                if "octet-stream" in content_type or self._is_gzip(raw):
-                    raw = gzip.decompress(raw)
-            except Exception:
-                pass  # Not gzip, use as-is
-
-            lines: List[str] = []
-            for line in raw.decode("utf-8", errors="replace").splitlines():
-                line = line.strip()
-                if line:
-                    # Try to parse as JSON; if not, wrap as raw string event
-                    try:
-                        event = json.loads(line)
-                        if isinstance(event, dict):
-                            event.setdefault("_log_type", log_type)
-                            lines.append(json.dumps(event))
-                        else:
-                            lines.append(json.dumps({"message": line, "_log_type": log_type}))
-                    except json.JSONDecodeError:
-                        lines.append(json.dumps({"message": line, "_log_type": log_type}))
-
-            if lines:
-                self._push_lines(lines, source)
-
-    @staticmethod
-    def _is_gzip(data: bytes) -> bool:
-        return data[:2] == b"\x1f\x8b"
-
     def _fetch_ttp_url_logs(self) -> None:
-        """1.3 TTP URL Logs (API 1.0) — clicks on malicious URLs."""
+        """1.2 TTP URL Logs (API 2.0) — clicks on malicious URLs."""
         source = "ttp_url_logs"
         cursor = self._get_cursor("ttp_url_logs_cursor")
 
@@ -346,12 +271,12 @@ class MimecastConnector(Connector):
             "route": "all",
             "scanResult": "all",
         }
-        self._fetch_paginated_v1("/api/ttp/url/get-logs", data_payload, "ttp_url_logs_cursor", source)
+        self._fetch_paginated_v2("/api/ttp/url/get-logs", data_payload, "ttp_url_logs_cursor", source)
         # Advance timestamp cursor to now so next run doesn't re-fetch old events
         self._set_cursor("ttp_url_logs_cursor", self._now_iso())
 
     def _fetch_ttp_attachment_logs(self) -> None:
-        """1.4 TTP Attachment Protection Logs (API 1.0) — attachment scan results."""
+        """1.3 TTP Attachment Protection Logs (API 2.0) — attachment scan results."""
         source = "ttp_attachment_logs"
         cursor = self._get_cursor("ttp_attachment_logs_cursor")
 
@@ -360,13 +285,13 @@ class MimecastConnector(Connector):
             "from": cursor or self._start_iso(),
             "to": self._now_iso(),
         }
-        self._fetch_paginated_v1(
+        self._fetch_paginated_v2(
             "/api/ttp/attachment/get-logs", data_payload, "ttp_attachment_logs_cursor", source
         )
         self._set_cursor("ttp_attachment_logs_cursor", self._now_iso())
 
     def _fetch_ttp_impersonation_logs(self) -> None:
-        """1.5 TTP Impersonation Protection Logs (API 1.0) — identity spoofing detections."""
+        """1.4 TTP Impersonation Protection Logs (API 2.0) — identity spoofing detections."""
         source = "ttp_impersonation_logs"
         cursor = self._get_cursor("ttp_impersonation_logs_cursor")
 
@@ -376,13 +301,13 @@ class MimecastConnector(Connector):
             "to": self._now_iso(),
             "taggedMalicious": True,
         }
-        self._fetch_paginated_v1(
+        self._fetch_paginated_v2(
             "/api/ttp/impersonation/get-logs", data_payload, "ttp_impersonation_logs_cursor", source
         )
         self._set_cursor("ttp_impersonation_logs_cursor", self._now_iso())
 
     def _fetch_dlp_logs(self) -> None:
-        """1.6 DLP Logs (API 1.0) — messages that triggered a DLP policy."""
+        """1.5 DLP Logs (API 2.0) — messages that triggered a DLP policy."""
         source = "dlp_logs"
         cursor = self._get_cursor("dlp_logs_cursor")
 
@@ -391,11 +316,11 @@ class MimecastConnector(Connector):
             "from": cursor or self._start_iso(),
             "to": self._now_iso(),
         }
-        self._fetch_paginated_v1("/api/dlp/get-logs", data_payload, "dlp_logs_cursor", source)
+        self._fetch_paginated_v2("/api/dlp/get-logs", data_payload, "dlp_logs_cursor", source)
         self._set_cursor("dlp_logs_cursor", self._now_iso())
 
     def _fetch_audit_events(self) -> None:
-        """1.7 Audit Events (API 1.0) — admin traceability events."""
+        """1.6 Audit Events (API 2.0) — admin traceability events."""
         source = "audit_events"
         cursor = self._get_cursor("audit_events_cursor")
 
@@ -403,13 +328,13 @@ class MimecastConnector(Connector):
             "startDateTime": cursor or self._start_iso(),
             "endDateTime": self._now_iso(),
         }
-        self._fetch_paginated_v1(
+        self._fetch_paginated_v2(
             "/api/audit/get-audit-events", data_payload, "audit_events_cursor", source
         )
         self._set_cursor("audit_events_cursor", self._now_iso())
 
     def _fetch_rejection_logs(self) -> None:
-        """1.8 Rejection Logs (API 1.0) — rejected emails."""
+        """1.7 Rejection Logs (API 2.0) — rejected emails."""
         source = "rejection_logs"
         cursor = self._get_cursor("rejection_logs_cursor")
 
@@ -418,13 +343,13 @@ class MimecastConnector(Connector):
             "from": cursor or self._start_iso(),
             "to": self._now_iso(),
         }
-        self._fetch_paginated_v1(
+        self._fetch_paginated_v2(
             "/api/gateway/get-rejections", data_payload, "rejection_logs_cursor", source
         )
         self._set_cursor("rejection_logs_cursor", self._now_iso())
 
     def _fetch_message_release_logs(self) -> None:
-        """1.9 Message Release Logs (API 1.0) — messages released from quarantine."""
+        """1.8 Message Release Logs (API 2.0) — messages released from quarantine."""
         source = "message_release_logs"
         cursor = self._get_cursor("message_release_logs_cursor")
 
@@ -433,7 +358,7 @@ class MimecastConnector(Connector):
             "from": cursor or self._start_iso(),
             "to": self._now_iso(),
         }
-        self._fetch_paginated_v1(
+        self._fetch_paginated_v2(
             "/api/gateway/get-message-release-logs",
             data_payload,
             "message_release_logs_cursor",
@@ -477,7 +402,7 @@ class MimecastConnector(Connector):
         self._set_cursor("threat_events_cursor", now_ts)
 
     def _fetch_threat_intel_feed(self) -> None:
-        """2.2 Threat Intel Feed (API 1.0) — Mimecast IOC feeds."""
+        """2.2 Threat Intel Feed (API 2.0) — Mimecast IOC feeds."""
         source = "threat_intel_feed"
         for feed_type, cursor_name in (
             ("malware_customer", "threat_intel_malware_customer_token"),
@@ -491,8 +416,8 @@ class MimecastConnector(Connector):
                 data_entry["token"] = token
 
             try:
-                resp = self.client.post_v1(
-                    "/api/ttp/threatintel/get-feed", body={"data": [data_entry]}
+                resp = self.client.post_v2(
+                    "/api/ttp/threatintel/get-feed", json={"data": [data_entry]}
                 )
             except MimecastAPIError as exc:
                 level = "warning" if exc.status_code == 404 else "error"
@@ -526,7 +451,7 @@ class MimecastConnector(Connector):
                         self._set_cursor(cursor_name, new_token)
 
     def _fetch_threat_incidents(self) -> None:
-        """2.4 Threat Intel Incidents (API 1.0) — security incidents."""
+        """2.3 Threat Intel Incidents (API 2.0) — security incidents."""
         source = "threat_incidents"
         cursor = self._get_cursor("threat_incidents_cursor")
 
@@ -535,17 +460,21 @@ class MimecastConnector(Connector):
             "from": cursor or self._start_iso(),
             "to": self._now_iso(),
         }
-        self._fetch_paginated_v1(
+        self._fetch_paginated_v2(
             "/api/ttp/remediation/find-incidents", data_payload, "threat_incidents_cursor", source
         )
         self._set_cursor("threat_incidents_cursor", self._now_iso())
 
     # ------------------------------------------------------------------
     # GROUP 3 — Awareness Training (daily polling)
+    # Pending API 2.0 availability — disabled by default.
     # ------------------------------------------------------------------
 
     def _fetch_awareness_training(self) -> None:
-        """Group 3 — Awareness Training data (SAFE scores, phishing campaigns, watchlists)."""
+        """Group 3 — Awareness Training data (SAFE scores, phishing campaigns, watchlists).
+
+        Pending API 2.0 availability. Currently disabled (enable_awareness_training=False).
+        """
         source = "awareness_training"
 
         # Only poll once per day
@@ -593,10 +522,14 @@ class MimecastConnector(Connector):
 
     # ------------------------------------------------------------------
     # GROUP 4 — Web Security / ESS Logs
+    # Pending API 2.0 availability — disabled by default.
     # ------------------------------------------------------------------
 
     def _fetch_web_security_logs(self) -> None:
-        """Group 4 — Web Security DNS and Proxy event logs."""
+        """Group 4 — Web Security DNS and Proxy event logs.
+
+        Pending API 2.0 availability. Currently disabled (enable_web_security_logs=False).
+        """
         source = "web_security"
         for log_type, cursor_name, endpoint in (
             ("dns", "web_security_dns_token", "/api/ess/dns-logs"),
@@ -633,10 +566,14 @@ class MimecastConnector(Connector):
 
     # ------------------------------------------------------------------
     # GROUP 5 — Archive Logs
+    # Pending API 2.0 availability — disabled by default.
     # ------------------------------------------------------------------
 
     def _fetch_archive_logs(self) -> None:
-        """Group 5 — Archive search and message view logs."""
+        """Group 5 — Archive search and message view logs.
+
+        Pending API 2.0 availability. Currently disabled (enable_archive_logs=False).
+        """
         source = "archive_logs"
         for log_type, cursor_name, endpoint in (
             ("search", "archive_search_logs_cursor", "/api/audit/get-archive-search-logs"),
@@ -649,7 +586,7 @@ class MimecastConnector(Connector):
                 "from": cursor or self._start_iso(),
                 "to": self._now_iso(),
             }
-            self._fetch_paginated_v1(endpoint, data_payload, cursor_name, f"{source}_{log_type}")
+            self._fetch_paginated_v2(endpoint, data_payload, cursor_name, f"{source}_{log_type}")
             self._set_cursor(cursor_name, self._now_iso())
 
     # ------------------------------------------------------------------
@@ -659,38 +596,26 @@ class MimecastConnector(Connector):
     def run(self) -> None:  # pragma: no cover
         self.log(message="Mimecast connector starting", level="info")
 
-        if not self._has_v1_creds:
-            self.log(
-                message=(
-                    "API 1.0 credentials (access_key, secret_key, app_id, app_key) are not "
-                    "configured — all API 1.0 fetchers will be skipped. "
-                    "Only SIEM Stream and Threat Events (API 2.0) will run."
-                ),
-                level="warning",
-            )
-
         while self.running:
             cycle_start = time.time()
-            v1 = self._has_v1_creds
 
             fetchers = [
-                # API 2.0 fetchers — always available when enabled
+                # API 2.0 fetchers (OAuth2 Bearer token)
                 (self.configuration.enable_siem_stream, self._fetch_siem_stream),
+                (self.configuration.enable_ttp_url_logs, self._fetch_ttp_url_logs),
+                (self.configuration.enable_ttp_attachment_logs, self._fetch_ttp_attachment_logs),
+                (self.configuration.enable_ttp_impersonation_logs, self._fetch_ttp_impersonation_logs),
+                (self.configuration.enable_dlp_logs, self._fetch_dlp_logs),
+                (self.configuration.enable_audit_events, self._fetch_audit_events),
+                (self.configuration.enable_rejection_logs, self._fetch_rejection_logs),
+                (self.configuration.enable_message_release_logs, self._fetch_message_release_logs),
                 (self.configuration.enable_threat_events, self._fetch_threat_events),
-                # API 1.0 fetchers — skipped silently if v1 creds are absent
-                (self.configuration.enable_siem_logs and v1, self._fetch_siem_logs),
-                (self.configuration.enable_ttp_url_logs and v1, self._fetch_ttp_url_logs),
-                (self.configuration.enable_ttp_attachment_logs and v1, self._fetch_ttp_attachment_logs),
-                (self.configuration.enable_ttp_impersonation_logs and v1, self._fetch_ttp_impersonation_logs),
-                (self.configuration.enable_dlp_logs and v1, self._fetch_dlp_logs),
-                (self.configuration.enable_audit_events and v1, self._fetch_audit_events),
-                (self.configuration.enable_rejection_logs and v1, self._fetch_rejection_logs),
-                (self.configuration.enable_message_release_logs and v1, self._fetch_message_release_logs),
-                (self.configuration.enable_threat_intel_feed and v1, self._fetch_threat_intel_feed),
-                (self.configuration.enable_threat_incidents and v1, self._fetch_threat_incidents),
-                (self.configuration.enable_awareness_training and v1, self._fetch_awareness_training),
-                (self.configuration.enable_web_security_logs and v1, self._fetch_web_security_logs),
-                (self.configuration.enable_archive_logs and v1, self._fetch_archive_logs),
+                (self.configuration.enable_threat_intel_feed, self._fetch_threat_intel_feed),
+                (self.configuration.enable_threat_incidents, self._fetch_threat_incidents),
+                # Pending API 2.0 availability — disabled by default
+                (self.configuration.enable_awareness_training, self._fetch_awareness_training),
+                (self.configuration.enable_web_security_logs, self._fetch_web_security_logs),
+                (self.configuration.enable_archive_logs, self._fetch_archive_logs),
             ]
 
             for enabled, fetcher in fetchers:

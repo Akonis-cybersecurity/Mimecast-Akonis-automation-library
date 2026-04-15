@@ -1,0 +1,38 @@
+{
+  "input": {
+    "message": "{\"releaseTime\": \"2026-04-10T11:00:00+0000\", \"fromEnvelope\": \"newsletter@partner.com\", \"to\": \"user@corp.com\", \"subject\": \"Monthly Newsletter\", \"operator\": \"admin@corp.com\", \"reason\": \"false_positive\", \"holdReason\": \"Spam\", \"accountId\": \"ANONYMIZED\"}"
+  },
+  "expected": {
+    "message": "{\"releaseTime\": \"2026-04-10T11:00:00+0000\", \"fromEnvelope\": \"newsletter@partner.com\", \"to\": \"user@corp.com\", \"subject\": \"Monthly Newsletter\", \"operator\": \"admin@corp.com\", \"reason\": \"false_positive\", \"holdReason\": \"Spam\", \"accountId\": \"ANONYMIZED\"}",
+    "@timestamp": "2026-04-10T11:00:00+0000",
+    "event": {
+      "category": ["email"],
+      "dataset": "message_release",
+      "kind": "event",
+      "provider": "Mimecast",
+      "type": ["allowed"]
+    },
+    "email": {
+      "from": { "address": ["newsletter@partner.com"] },
+      "subject": "Monthly Newsletter",
+      "to": { "address": ["user@corp.com"] }
+    },
+    "mimecast": {
+      "release": {
+        "hold_reason": "Spam",
+        "operator": "admin@corp.com",
+        "reason": "false_positive"
+      }
+    },
+    "organization": { "id": "ANONYMIZED" },
+    "source": {
+      "user": { "domain": "partner.com", "email": "newsletter@partner.com" }
+    },
+    "destination": {
+      "user": { "domain": "corp.com", "email": "user@corp.com" }
+    },
+    "related": {
+      "user": ["newsletter@partner.com", "user@corp.com"]
+    }
+  }
+}

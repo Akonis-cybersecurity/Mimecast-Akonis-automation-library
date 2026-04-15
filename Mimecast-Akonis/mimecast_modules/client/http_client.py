@@ -17,7 +17,12 @@ _RETRY_DELAYS = [60, 120, 240]
 
 
 class MimecastClient:
-    """HTTP client supporting both Mimecast API 2.0 (OAuth2) and API 1.0 (HMAC-SHA1)."""
+    """HTTP client for Mimecast API 2.0 (OAuth2 Bearer token).
+
+    API 1.0 (HMAC-SHA1) methods are retained as stubs for three fetchers
+    (awareness_training, web_security_logs, archive_logs) that are pending
+    API 2.0 availability and are disabled by default.
+    """
 
     def __init__(
         self,
@@ -25,22 +30,10 @@ class MimecastClient:
         base_url: str,
         client_id: str,
         client_secret: str,
-        # API 1.0 (HMAC) — all optional; only required when calling /api/... endpoints
-        base_url_v1: str = "https://us-api.mimecast.com",
-        access_key: Optional[str] = None,
-        secret_key: Optional[str] = None,
-        app_id: Optional[str] = None,
-        app_key: Optional[str] = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._client_id = client_id
         self._client_secret = client_secret
-
-        self._base_url_v1 = base_url_v1.rstrip("/")
-        self._access_key = access_key
-        self._secret_key = secret_key
-        self._app_id = app_id
-        self._app_key = app_key
 
         # OAuth2 token state
         self._oauth_token: Optional[str] = None
@@ -83,33 +76,35 @@ class MimecastClient:
 
     # ------------------------------------------------------------------
     # HMAC-SHA1 header builder (API 1.0)
+    # Retained for the three fetchers pending API 2.0 migration.
     # ------------------------------------------------------------------
 
-    def _build_hmac_headers(self, uri: str) -> dict:
+    def _build_hmac_headers(
+        self,
+        uri: str,
+        access_key: str,
+        secret_key: str,
+        app_id: str,
+        app_key: str,
+    ) -> dict:
         """Build the authentication headers required for API 1.0 (HMAC-SHA1)."""
-        if not all([self._access_key, self._secret_key, self._app_id, self._app_key]):
-            raise MimecastAuthError(
-                "API 1.0 credentials (access_key, secret_key, app_id, app_key) are required "
-                "for this endpoint but are not configured."
-            )
-
         request_id = str(uuid.uuid4())
         # RFC 2822 date in UTC, e.g. "Thu, 01 Jan 2026 00:00:00 -0000"
         date_str = formatdate(usegmt=True)
 
         # Signature data: date:requestId:uri:app_key
-        signature_data = ":".join([date_str, request_id, uri, self._app_key])  # type: ignore[list-item]
+        signature_data = ":".join([date_str, request_id, uri, app_key])
 
         # HMAC-SHA1: key = base64_decode(secret_key), message = signature_data
-        secret_bytes = base64.b64decode(self._secret_key)  # type: ignore[arg-type]
+        secret_bytes = base64.b64decode(secret_key)
         hmac_digest = hmac.new(secret_bytes, signature_data.encode("utf-8"), hashlib.sha1).digest()
         signature_b64 = base64.b64encode(hmac_digest).decode("utf-8")
 
         return {
-            "Authorization": f"MC {self._access_key}:{signature_b64}",
+            "Authorization": f"MC {access_key}:{signature_b64}",
             "x-mc-date": date_str,
             "x-mc-req-id": request_id,
-            "x-mc-app-id": self._app_id,
+            "x-mc-app-id": app_id,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -181,27 +176,47 @@ class MimecastClient:
 
     # ------------------------------------------------------------------
     # Public API 1.0 methods (HMAC-SHA1)
+    # Pending API 2.0 migration for awareness_training, web_security_logs,
+    # and archive_logs fetchers. Those fetchers are disabled by default.
     # ------------------------------------------------------------------
 
-    def post_v1(self, path: str, body: Any = None) -> requests.Response:
+    def post_v1(
+        self,
+        path: str,
+        body: Any = None,
+        base_url_v1: str = "https://us-api.mimecast.com",
+        access_key: str = "",
+        secret_key: str = "",
+        app_id: str = "",
+        app_key: str = "",
+    ) -> requests.Response:
         """HTTP POST against the API 1.0 base URL with HMAC-SHA1 auth."""
-        url = f"{self._base_url_v1}{path}"
-        headers = self._build_hmac_headers(path)
+        url = f"{base_url_v1.rstrip('/')}{path}"
+        headers = self._build_hmac_headers(path, access_key, secret_key, app_id, app_key)
         return self._request_with_retry("POST", url, headers=headers, json=body)
 
-    def post_v1_raw(self, path: str, body: Any = None) -> requests.Response:
+    def post_v1_raw(
+        self,
+        path: str,
+        body: Any = None,
+        base_url_v1: str = "https://us-api.mimecast.com",
+        access_key: str = "",
+        secret_key: str = "",
+        app_id: str = "",
+        app_key: str = "",
+    ) -> requests.Response:
         """Like post_v1 but for binary responses (stream=True).
 
         Uses the same 429 backoff as _request_with_retry: up to 3 retries
         with delays of 60 s → 120 s → 240 s.
         """
-        url = f"{self._base_url_v1}{path}"
+        url = f"{base_url_v1.rstrip('/')}{path}"
 
         for attempt, delay in enumerate([0] + _RETRY_DELAYS):
             if delay:
                 time.sleep(delay)
 
-            headers = self._build_hmac_headers(path)
+            headers = self._build_hmac_headers(path, access_key, secret_key, app_id, app_key)
             # This endpoint returns binary gzip — override the default Accept: application/json
             # set by _build_hmac_headers, otherwise the server returns HTTP 406.
             headers["Accept"] = "application/octet-stream"

@@ -1,0 +1,29 @@
+{
+  "input": {
+    "message": "{\"type\": \"Domain\", \"value\": \"malicious.example.com\"}"
+  },
+  "expected": {
+    "message": "{\"type\": \"Domain\", \"value\": \"malicious.example.com\"}",
+    "event": {
+      "category": ["threat"],
+      "dataset": "threat_intel",
+      "kind": "indicator",
+      "provider": "Mimecast",
+      "type": ["indicator"]
+    },
+    "mimecast": {
+      "intel": {
+        "indicator_type": "Domain"
+      }
+    },
+    "threat": {
+      "indicator": {
+        "name": "malicious.example.com",
+        "type": "domain-name"
+      }
+    },
+    "url": {
+      "domain": "malicious.example.com"
+    }
+  }
+}
