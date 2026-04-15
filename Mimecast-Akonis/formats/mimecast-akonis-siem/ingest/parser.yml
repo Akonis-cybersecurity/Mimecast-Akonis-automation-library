@@ -199,7 +199,7 @@ stages:
           source.user.name: "{{parse_event.message.user.split('@')[0]}}"
           source.user.domain: "{{parse_event.message.user.split('@')[-1]}}"
           organization.id: "{{parse_event.message.accountId}}"
-        filter: "{{parse_event.message.get('eventType') != None and parse_event.message.get('type') == None and parse_event.message.get('scanResult') == None}}"
+        filter: "{{(parse_event.message.get('eventType') != None or parse_event.message.get('auditType') != None) and parse_event.message.get('type') == None and parse_event.message.get('scanResult') == None}}"
 
       # ---------------------------------------------------------------
       # TTP URL logs — /api/ttp/url/get-logs

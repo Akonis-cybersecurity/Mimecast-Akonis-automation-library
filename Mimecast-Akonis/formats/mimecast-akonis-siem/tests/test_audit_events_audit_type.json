@@ -1,0 +1,22 @@
+{
+  "input": {
+    "message": "{\"id\": \"audit-002\", \"auditType\": \"Completed Directory Sync\", \"user\": \"\", \"eventTime\": \"2026-04-08T11:41:42+0000\", \"eventInfo\": \"No changes found.\", \"category\": \"account_logs\"}"
+  },
+  "expected": {
+    "message": "{\"id\": \"audit-002\", \"auditType\": \"Completed Directory Sync\", \"user\": \"\", \"eventTime\": \"2026-04-08T11:41:42+0000\", \"eventInfo\": \"No changes found.\", \"category\": \"account_logs\"}",
+    "@timestamp": "2026-04-08T11:41:42+0000",
+    "event": {
+      "category": ["configuration"],
+      "dataset": "audit",
+      "kind": "event",
+      "provider": "Mimecast",
+      "type": ["change"]
+    },
+    "mimecast": {
+      "audit": {
+        "category": "account_logs",
+        "event_type": "Completed Directory Sync"
+      }
+    }
+  }
+}
