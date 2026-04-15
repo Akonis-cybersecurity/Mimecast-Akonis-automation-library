@@ -202,6 +202,9 @@ class MimecastClient:
                 time.sleep(delay)
 
             headers = self._build_hmac_headers(path)
+            # This endpoint returns binary gzip — override the default Accept: application/json
+            # set by _build_hmac_headers, otherwise the server returns HTTP 406.
+            headers["Accept"] = "application/octet-stream"
             response = self._session.post(url, headers=headers, json=body, timeout=120, stream=True)
 
             if response.status_code == 429:
