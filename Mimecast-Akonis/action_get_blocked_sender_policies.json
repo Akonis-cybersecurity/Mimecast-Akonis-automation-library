@@ -1,0 +1,40 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "page_size": {
+        "type": "integer",
+        "description": "Number of policies to retrieve per API page (1-100). Defaults to 100.",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 100
+      },
+      "max_results": {
+        "type": "integer",
+        "description": "Maximum total number of policies to return. If omitted, all policies are returned."
+      }
+    },
+    "required": []
+  },
+  "description": "Retrieve the list of blocked sender policies from Mimecast, with automatic pagination.",
+  "docker_parameters": "get_blocked_sender_policies",
+  "name": "Get Blocked Sender Policies",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "policies": {
+        "type": "array",
+        "description": "List of blocked sender policies with id, description, sender, option, enabled, fromDateTime, toDateTime.",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "uuid": "7a7f5d87-f907-408f-bc36-d7fb94e75122",
+  "slug": "get_blocked_sender_policies"
+}

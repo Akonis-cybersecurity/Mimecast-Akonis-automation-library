@@ -1,0 +1,40 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "start": {
+        "type": "string",
+        "description": "Start of the time range (ISO-8601 with timezone)."
+      },
+      "end": {
+        "type": "string",
+        "description": "End of the time range (ISO-8601 with timezone). Optional."
+      },
+      "type": {
+        "type": "string",
+        "description": "Detection type: 'spam' or 'malware'.",
+        "enum": ["spam", "malware"]
+      }
+    },
+    "required": ["start", "type"]
+  },
+  "description": "Retrieve gateway detection statistics (spam or malware) from Mimecast Threat Intelligence.",
+  "docker_parameters": "get_stats_gateway_detections",
+  "name": "Get Threat Stats By Gateway Detections",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "stats": {
+        "type": "array",
+        "description": "Gateway detection statistics.",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "uuid": "0485ab54-deea-45da-a86d-4556778c8051",
+  "slug": "get_stats_gateway_detections"
+}

@@ -1,10 +1,14 @@
 """Mimecast SIEM connector — polls all Mimecast security event sources and forwards them to Sekoia."""
 
+import gzip
+import io
 import json
 import time
 from datetime import datetime, timedelta, timezone
 from functools import cached_property
 from typing import List, Optional
+
+import requests as _requests
 
 from sekoia_automation.connector import Connector, DefaultConnectorConfiguration
 from sekoia_automation.storage import PersistentJSON
@@ -221,42 +225,64 @@ class MimecastConnector(Connector):
     # GROUP 1 — SIEM & Security Logs
     # ------------------------------------------------------------------
 
+    # The SIEM batch endpoint returns pre-signed S3 URLs to .json.gz files,
+    # one set per log type.  Each file is NDJSON (one JSON object per line).
+    _SIEM_LOG_TYPES = ("receipt", "process", "delivery", "journal")
+
     def _fetch_siem_stream(self) -> None:
-        """1.1 SIEM Stream API (API 2.0) — real-time email security events."""
+        """1.1 SIEM Stream API (API 2.0) — downloads batched event files from S3."""
         source = "siem_stream"
-        page_token: Optional[str] = self._get_cursor("siem_stream_token")
+        for log_type in self._SIEM_LOG_TYPES:
+            if not self.running:
+                break
+            self._fetch_siem_log_type(log_type, source)
+
+    def _fetch_siem_log_type(self, log_type: str, source: str) -> None:
+        """Paginate one SIEM log type, downloading and pushing each .json.gz batch."""
+        cursor_name = f"siem_{log_type}_token"
+        next_page: Optional[str] = self._get_cursor(cursor_name)
 
         while self.running:
-            params: dict = {"fileFormat": "JSON"}
-            if page_token:
-                params["pageToken"] = page_token
+            params: dict = {"type": log_type}
+            if next_page:
+                params["@nextPage"] = next_page
 
             try:
-                resp = self.client.get_v2("/api/siem/v1/batch/events/cg", params=params)
+                resp = self.client.get_v2("/siem/v1/batch/events/cg", params=params)
             except (MimecastRateLimitError, MimecastAPIError, MimecastAuthError) as exc:
-                self.log_exception(exc, message=f"[{source}] API error")
-                return
+                self.log_exception(exc, message=f"[{source}/{log_type}] API error")
+                break
 
             payload = resp.json()
-            events = payload.get("data", [])
+            # Each item in "value" is {"url": "https://...", "expiry": "...", "size": N}
+            url_items: List = payload.get("value", [])
 
             lines: List[str] = []
-            for event in events:
-                lines.append(json.dumps(event) if isinstance(event, dict) else event)
+            for item in url_items:
+                url = item["url"] if isinstance(item, dict) else item
+                try:
+                    dl = _requests.get(url, timeout=60)
+                    dl.raise_for_status()
+                    with gzip.open(io.BytesIO(dl.content)) as gz_file:
+                        for raw in gz_file:
+                            line = raw.decode("utf-8").strip()
+                            if line:
+                                lines.append(json.dumps(json.loads(line)))
+                except Exception as exc:
+                    self.log_exception(exc, message=f"[{source}/{log_type}] Failed to fetch S3 file")
 
             if lines:
                 self._push_lines(lines, source)
 
-            next_token = payload.get("nextToken")
-            if next_token:
-                self._set_cursor("siem_stream_token", next_token)
-                page_token = next_token
+            next_page = payload.get("@nextPage")
+            if next_page:
+                self._set_cursor(cursor_name, next_page)
 
             if payload.get("isCaughtUp", False):
-                self.log(message=f"[{source}] Caught up — stopping poll", level="info")
+                self.log(message=f"[{source}/{log_type}] Caught up", level="info")
                 break
 
-            if not next_token:
+            if not next_page:
                 break
 
     def _fetch_ttp_url_logs(self) -> None:
@@ -359,7 +385,7 @@ class MimecastConnector(Connector):
             "to": self._now_iso(),
         }
         self._fetch_paginated_v2(
-            "/api/gateway/get-message-release-logs",
+            "/api/gateway/get-hold-message-list",
             data_payload,
             "message_release_logs_cursor",
             source,

@@ -1,0 +1,55 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "start": {
+        "type": "string",
+        "description": "Start of the time range (ISO-8601 with timezone)."
+      },
+      "end": {
+        "type": "string",
+        "description": "End of the time range (ISO-8601 with timezone). Optional."
+      },
+      "email": {
+        "type": "string",
+        "description": "Filter by recipient email address."
+      },
+      "page_size": {
+        "type": "integer",
+        "description": "Results per page (1-100).",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Maximum results to return (1-1000, default 5).",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "order_by": {
+        "type": "string",
+        "description": "Sort order, e.g. 'totalCount:desc'."
+      }
+    },
+    "required": ["start"]
+  },
+  "description": "Retrieve threat statistics grouped by recipient from Mimecast Threat Intelligence.",
+  "docker_parameters": "get_threats_by_recipient",
+  "name": "Get Threats By Recipient",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "recipients": {
+        "type": "array",
+        "description": "List of recipients with threat counts (spam, malware, phishing, suspicious, unwanted, total).",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "uuid": "c9cdda49-35cb-4deb-a11d-c7bb0c4d1d41",
+  "slug": "get_threats_by_recipient"
+}

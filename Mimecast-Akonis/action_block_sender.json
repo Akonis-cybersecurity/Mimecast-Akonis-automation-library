@@ -1,0 +1,48 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "sender_email": {
+        "type": "string",
+        "description": "Email address of the sender to block."
+      },
+      "description": {
+        "type": "string",
+        "description": "Optional description for the policy. Defaults to 'Blocked by Sekoia SOAR - <sender_email>'."
+      },
+      "to_email": {
+        "type": "string",
+        "description": "If provided, the block applies only to this recipient. Otherwise, the sender is blocked for everyone."
+      }
+    },
+    "required": [
+      "sender_email"
+    ]
+  },
+  "description": "Block a sender in Mimecast by creating a blocked senders policy via the Policy Management API.",
+  "docker_parameters": "block_sender",
+  "name": "Block Sender",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "policy_id": {
+        "type": "string",
+        "description": "Identifier of the created blocked-senders policy."
+      },
+      "sender_email": {
+        "type": "string",
+        "description": "Email address that was blocked."
+      },
+      "status": {
+        "type": "string",
+        "description": "Outcome of the operation ('blocked')."
+      }
+    }
+  },
+  "uuid": "4974acec-df2a-4558-80e1-39a5ea7958fb",
+  "slug": "block_sender"
+}

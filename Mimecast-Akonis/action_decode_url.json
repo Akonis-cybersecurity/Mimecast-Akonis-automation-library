@@ -1,0 +1,36 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "Mimecast-encoded URL to decode (e.g. https://protect-xx.mimecast.com/...)."
+      }
+    },
+    "required": [
+      "url"
+    ]
+  },
+  "description": "Decode a Mimecast-rewritten URL to its original form via the TTP URL API.",
+  "docker_parameters": "decode_url",
+  "name": "Decode URL",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "decoded_url": {
+        "type": "string",
+        "description": "Original URL before Mimecast rewriting."
+      },
+      "category": {
+        "type": "string",
+        "description": "URL category as assessed by Mimecast (if available)."
+      }
+    }
+  },
+  "uuid": "f700e1c8-eb5e-4dca-8882-b3c5e9380549",
+  "slug": "decode_url"
+}

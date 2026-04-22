@@ -1,0 +1,35 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "start": {
+        "type": "string",
+        "description": "Start of the time range (ISO-8601 with timezone)."
+      },
+      "end": {
+        "type": "string",
+        "description": "End of the time range (ISO-8601 with timezone). Optional."
+      }
+    },
+    "required": ["start"]
+  },
+  "description": "Retrieve malicious URL click statistics from Mimecast Threat Intelligence.",
+  "docker_parameters": "get_stats_url_clicks",
+  "name": "Get Threat Stats By URL Clicks",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "stats": {
+        "type": "array",
+        "description": "Malicious URL click statistics.",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "uuid": "ff755915-de27-4a5b-8bc4-660901369be9",
+  "slug": "get_stats_url_clicks"
+}

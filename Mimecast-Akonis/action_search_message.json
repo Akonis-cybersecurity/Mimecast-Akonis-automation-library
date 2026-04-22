@@ -1,0 +1,75 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "from_email": {
+        "type": "string",
+        "description": "Sender email address filter."
+      },
+      "to_email": {
+        "type": "string",
+        "description": "Recipient email address filter."
+      },
+      "subject": {
+        "type": "string",
+        "description": "Message subject filter."
+      },
+      "start": {
+        "type": "string",
+        "description": "Start datetime in format yyyy-MM-dd'T'HH:mm:ssZ."
+      },
+      "end": {
+        "type": "string",
+        "description": "End datetime in format yyyy-MM-dd'T'HH:mm:ssZ."
+      },
+      "route": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Message direction filter: inbound, outbound, internal."
+      },
+      "status": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Message status filter: accepted, held, rejected, delivery, etc."
+      },
+      "message_id": {
+        "type": "string",
+        "description": "Internet message ID."
+      },
+      "url": {
+        "type": "string",
+        "description": "URL present in the message."
+      },
+      "sender_ip": {
+        "type": "string",
+        "description": "Source IP address of the sender."
+      }
+    },
+    "required": []
+  },
+  "description": "Search Mimecast message tracking logs by sender, recipient, subject, date range, or other criteria.",
+  "docker_parameters": "search_message",
+  "name": "Search Message",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "messages": {
+        "type": "array",
+        "description": "List of matching messages with id, subject, from, to, status, and timestamp.",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "uuid": "a65c8318-af16-41a5-80b9-cdbfdf4dba95",
+  "slug": "search_message"
+}

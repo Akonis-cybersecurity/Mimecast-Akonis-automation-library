@@ -1,0 +1,70 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "message_id": {
+        "type": "string",
+        "description": "Mimecast message ID as returned by the Search Message action."
+      }
+    },
+    "required": [
+      "message_id"
+    ]
+  },
+  "description": "Retrieve detailed information about a specific Mimecast message by its ID.",
+  "docker_parameters": "get_message_info",
+  "name": "Get Message Info",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Mimecast message ID."
+      },
+      "subject": {
+        "type": "string",
+        "description": "Message subject."
+      },
+      "from": {
+        "type": "string",
+        "description": "Sender email address."
+      },
+      "to": {
+        "type": "array",
+        "description": "List of recipient email addresses.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "status": {
+        "type": "string",
+        "description": "Current message status."
+      },
+      "timestamp": {
+        "type": "string",
+        "description": "Message reception timestamp."
+      },
+      "attachments": {
+        "type": "array",
+        "description": "List of attachment metadata objects.",
+        "items": {
+          "type": "object"
+        }
+      },
+      "route": {
+        "type": "string",
+        "description": "Message direction (inbound/outbound)."
+      },
+      "held_reason": {
+        "type": "string",
+        "description": "Reason the message was held in quarantine, if applicable."
+      }
+    }
+  },
+  "uuid": "e188d832-912c-480e-9fad-d1d84fa4d06a",
+  "slug": "get_message_info"
+}

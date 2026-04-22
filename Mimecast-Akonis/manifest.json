@@ -30,9 +30,101 @@
   "name": "Mimecast",
   "slug": "mimecast-akonis",
   "uuid": "c09d4315-7933-41f8-b715-0d59a11886fd",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "categories": [
     "Email Security"
   ],
-  "supports_validation": false
+  "supports_validation": false,
+  "actions": [
+    {
+      "name": "Block Sender",
+      "docker_parameters": "block_sender",
+      "description": "Block a sender in Mimecast by creating a blocked senders policy."
+    },
+    {
+      "name": "Permit Sender",
+      "docker_parameters": "permit_sender",
+      "description": "Allow a sender in Mimecast via the Managed Senders API."
+    },
+    {
+      "name": "Delete Managed Senders",
+      "docker_parameters": "delete_managed_senders",
+      "description": "Bulk-delete managed sender entries from Mimecast."
+    },
+    {
+      "name": "Decode URL",
+      "docker_parameters": "decode_url",
+      "description": "Decode a Mimecast-rewritten URL to its original form."
+    },
+    {
+      "name": "Search Message",
+      "docker_parameters": "search_message",
+      "description": "Search Mimecast message tracking logs."
+    },
+    {
+      "name": "Get Message Info",
+      "docker_parameters": "get_message_info",
+      "description": "Retrieve detailed information about a specific Mimecast message."
+    },
+    {
+      "name": "Get Blocked Sender Policies",
+      "docker_parameters": "get_blocked_sender_policies",
+      "description": "Retrieve the list of blocked sender policies from Mimecast."
+    },
+    {
+      "name": "Delete Blocked Sender Policy",
+      "docker_parameters": "delete_blocked_sender_policy",
+      "description": "Delete a blocked sender policy from Mimecast by its policy ID."
+    },
+    {
+      "name": "Get Threat Events",
+      "docker_parameters": "get_threat_events",
+      "description": "Retrieve threat events from Mimecast Threat Intelligence."
+    },
+    {
+      "name": "Get Threat Event Details",
+      "docker_parameters": "get_threat_event_details",
+      "description": "Retrieve detailed information for a specific Mimecast threat event."
+    },
+    {
+      "name": "Get Threat Stats By Attachment Scans",
+      "docker_parameters": "get_stats_attachment_scans",
+      "description": "Retrieve sandboxing attachment scan statistics from Mimecast."
+    },
+    {
+      "name": "Get Threat Stats By Gateway Detections",
+      "docker_parameters": "get_stats_gateway_detections",
+      "description": "Retrieve gateway detection statistics (spam or malware) from Mimecast."
+    },
+    {
+      "name": "Get Threat Stats By URL Clicks",
+      "docker_parameters": "get_stats_url_clicks",
+      "description": "Retrieve malicious URL click statistics from Mimecast."
+    },
+    {
+      "name": "Get Threat Stats By Impersonations",
+      "docker_parameters": "get_stats_impersonations",
+      "description": "Retrieve impersonation detection statistics from Mimecast."
+    },
+    {
+      "name": "Get Threats By Sender",
+      "docker_parameters": "get_threats_by_sender",
+      "description": "Retrieve threat statistics grouped by sender from Mimecast."
+    },
+    {
+      "name": "Get Threats By Recipient",
+      "docker_parameters": "get_threats_by_recipient",
+      "description": "Retrieve threat statistics grouped by recipient from Mimecast."
+    },
+    {
+      "name": "Get Reported Emails",
+      "docker_parameters": "get_reported_emails",
+      "description": "Retrieve user-reported emails from Mimecast Threat Reporting."
+    },
+    {
+      "name": "Get Threat Reports",
+      "docker_parameters": "get_threat_reports",
+      "description": "Retrieve threat analysis reports for a reported email from Mimecast."
+    }
+  ]
 }

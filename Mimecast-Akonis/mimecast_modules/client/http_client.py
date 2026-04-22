@@ -174,6 +174,16 @@ class MimecastClient:
         }
         return self._request_with_retry("POST", url, headers=headers, json=json)
 
+    def delete_v2(self, path: str) -> requests.Response:
+        """HTTP DELETE against the API 2.0 base URL with OAuth2 auth."""
+        token = self._get_oauth_token()
+        url = f"{self._base_url}{path}"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        }
+        return self._request_with_retry("DELETE", url, headers=headers)
+
     # ------------------------------------------------------------------
     # Public API 1.0 methods (HMAC-SHA1)
     # Pending API 2.0 migration for awareness_training, web_security_logs,

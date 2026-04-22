@@ -1,0 +1,41 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "reported_message_aggregate_id": {
+        "type": "string",
+        "description": "Aggregate ID returned by Get Reported Emails."
+      },
+      "page_size": {
+        "type": "integer",
+        "description": "Page size: 25, 50, 100, 250, or 500 (default 50).",
+        "enum": [25, 50, 100, 250, 500]
+      },
+      "offset": {
+        "type": "integer",
+        "description": "Pagination offset (default 0).",
+        "minimum": 0
+      }
+    },
+    "required": ["reported_message_aggregate_id"]
+  },
+  "description": "Retrieve threat analysis reports for a specific reported email from Mimecast Threat Reporting.",
+  "docker_parameters": "get_threat_reports",
+  "name": "Get Threat Reports",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "reports": {
+        "type": "array",
+        "description": "Threat reports with reportedDate, sender, subject, and threat analysis details.",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "uuid": "6384dc02-fb23-426c-80b0-76af09fc8535",
+  "slug": "get_threat_reports"
+}

@@ -1,0 +1,35 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "start": {
+        "type": "string",
+        "description": "Start of the time range (ISO-8601 with timezone)."
+      },
+      "end": {
+        "type": "string",
+        "description": "End of the time range (ISO-8601 with timezone). Optional."
+      }
+    },
+    "required": ["start"]
+  },
+  "description": "Retrieve sandboxing attachment scan statistics from Mimecast Threat Intelligence.",
+  "docker_parameters": "get_stats_attachment_scans",
+  "name": "Get Threat Stats By Attachment Scans",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "stats": {
+        "type": "array",
+        "description": "Attachment scan statistics (malicious sandbox detections).",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "uuid": "b2da90cb-7a55-4ea9-80d7-12dc2b032d20",
+  "slug": "get_stats_attachment_scans"
+}

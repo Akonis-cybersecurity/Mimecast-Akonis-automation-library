@@ -1,0 +1,45 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "sender_email": {
+        "type": "string",
+        "description": "Email address of the sender to allow."
+      },
+      "to_email": {
+        "type": "string",
+        "description": "Email address of the recipient for whom the sender is permitted."
+      }
+    },
+    "required": [
+      "sender_email",
+      "to_email"
+    ]
+  },
+  "description": "Allow a sender in Mimecast by adding a permit entry via the Managed Senders API.",
+  "docker_parameters": "permit_sender",
+  "name": "Permit Sender",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Identifier of the created permit rule."
+      },
+      "sender": {
+        "type": "string",
+        "description": "Email address that was permitted."
+      },
+      "status": {
+        "type": "string",
+        "description": "Outcome of the operation ('permitted')."
+      }
+    }
+  },
+  "uuid": "606ba783-2221-4e0e-9ac2-d8f7be2df8e9",
+  "slug": "permit_sender"
+}

@@ -1,0 +1,35 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "start": {
+        "type": "string",
+        "description": "Start of the time range (ISO-8601 with timezone)."
+      },
+      "end": {
+        "type": "string",
+        "description": "End of the time range (ISO-8601 with timezone). Optional."
+      }
+    },
+    "required": ["start"]
+  },
+  "description": "Retrieve impersonation detection statistics from Mimecast Threat Intelligence.",
+  "docker_parameters": "get_stats_impersonations",
+  "name": "Get Threat Stats By Impersonations",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "stats": {
+        "type": "array",
+        "description": "Impersonation detection statistics.",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "uuid": "e2d339a9-3a84-49da-8f0e-27ae4d621049",
+  "slug": "get_stats_impersonations"
+}

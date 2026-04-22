@@ -1,0 +1,75 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "timestamp_range_starts_at": {
+        "type": "string",
+        "description": "Start of the time range (ISO-8601 with timezone)."
+      },
+      "timestamp_range_ends_at": {
+        "type": "string",
+        "description": "End of the time range (ISO-8601 with timezone). Optional."
+      },
+      "analysis": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Filter by analysis type: malware, phishing, spam, suspicious, unwanted."
+      },
+      "status": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Filter by status: blocked, rejected, delivered, held, bounced, unknown."
+      },
+      "direction": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Filter by direction: inbound."
+      },
+      "source": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Filter by source: email, url."
+      },
+      "page_size": {
+        "type": "integer",
+        "description": "Results per page (1-100).",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Maximum results to return (1-1000, default 5).",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "order_by": {
+        "type": "string",
+        "description": "Sort order, format: column:[asc|desc], e.g. 'timestamp:desc'."
+      }
+    },
+    "required": ["timestamp_range_starts_at"]
+  },
+  "description": "Retrieve threat events from Mimecast Threat Intelligence, with optional filters by analysis type, status, direction, and source.",
+  "docker_parameters": "get_threat_events",
+  "name": "Get Threat Events",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "events": {
+        "type": "array",
+        "description": "List of threat events.",
+        "items": { "type": "object" }
+      },
+      "total": {
+        "type": "integer",
+        "description": "Total number of matching events."
+      }
+    }
+  },
+  "uuid": "e70a74c1-7e1f-4871-93a9-fe4c6261ff13",
+  "slug": "get_threat_events"
+}

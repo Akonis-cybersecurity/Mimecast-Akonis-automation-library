@@ -1,0 +1,53 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of sender email addresses or domains to delete (1-1000 entries)."
+      },
+      "action": {
+        "type": "string",
+        "description": "Filter by entry type: 'block' or 'permit'.",
+        "enum": ["block", "permit"]
+      },
+      "type": {
+        "type": "string",
+        "description": "Filter by entry origin: 'auto' or 'manual'.",
+        "enum": ["auto", "manual"]
+      },
+      "trusted": {
+        "type": "boolean",
+        "description": "Filter on trusted entries only."
+      }
+    },
+    "required": [
+      "ids"
+    ]
+  },
+  "description": "Bulk-delete managed sender entries from Mimecast (block or permit lists).",
+  "docker_parameters": "delete_managed_senders",
+  "name": "Delete Managed Senders",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "deleted_count": {
+        "type": "integer",
+        "description": "Number of entries successfully deleted."
+      },
+      "status": {
+        "type": "string",
+        "description": "Outcome of the operation ('deleted')."
+      }
+    }
+  },
+  "uuid": "1cd7efbe-97c5-4ced-b2e0-457baf02c802",
+  "slug": "delete_managed_senders"
+}

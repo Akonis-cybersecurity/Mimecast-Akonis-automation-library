@@ -110,5 +110,10 @@
       "intake_key"
     ]
   },
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {},
+    "title": "The events"
+  },
   "uuid": "84756f85-4691-4bf0-afa1-6226a0d7bfd0"
 }

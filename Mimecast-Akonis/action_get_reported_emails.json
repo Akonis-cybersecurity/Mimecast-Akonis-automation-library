@@ -1,0 +1,45 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "start": {
+        "type": "string",
+        "description": "Start datetime (ISO-8601). Defaults to 7 days ago."
+      },
+      "end": {
+        "type": "string",
+        "description": "End datetime (ISO-8601). Defaults to now."
+      },
+      "page_size": {
+        "type": "integer",
+        "description": "Page size: 25, 50, 100, 250, or 500 (default 50).",
+        "enum": [25, 50, 100, 250, 500]
+      },
+      "offset": {
+        "type": "integer",
+        "description": "Pagination offset (default 0).",
+        "minimum": 0
+      }
+    },
+    "required": []
+  },
+  "description": "Retrieve user-reported emails from Mimecast Threat Reporting.",
+  "docker_parameters": "get_reported_emails",
+  "name": "Get Reported Emails",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "emails": {
+        "type": "array",
+        "description": "List of reported emails with lastReportedDate, reportedMessageAggregateId, sender, subject.",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "uuid": "6599d145-bb08-4294-9c92-302f3f005e7f",
+  "slug": "get_reported_emails"
+}

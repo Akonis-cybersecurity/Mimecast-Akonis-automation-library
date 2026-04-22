@@ -44,3 +44,14 @@ def connector(data_storage):
     connector.push_events_to_intakes = MagicMock()
 
     yield connector
+
+
+@pytest.fixture
+def module():
+    m = MimecastModule()
+    m.configuration = MimecastModuleConfiguration(
+        client_id="test-client-id",
+        client_secret="test-client-secret",
+        base_url="https://api.services.mimecast.com",
+    )
+    return m

@@ -1,0 +1,36 @@
+{
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "policy_id": {
+        "type": "string",
+        "description": "ID of the blocked sender policy to delete, as returned by Block Sender or Get Blocked Sender Policies."
+      }
+    },
+    "required": [
+      "policy_id"
+    ]
+  },
+  "description": "Delete a blocked sender policy from Mimecast by its policy ID.",
+  "docker_parameters": "delete_blocked_sender_policy",
+  "name": "Delete Blocked Sender Policy",
+  "results": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "policy_id": {
+        "type": "string",
+        "description": "ID of the deleted policy."
+      },
+      "status": {
+        "type": "string",
+        "description": "Outcome of the operation ('deleted')."
+      }
+    }
+  },
+  "uuid": "9ce6310d-24b4-45c0-b1aa-4b98574063ef",
+  "slug": "delete_blocked_sender_policy"
+}
