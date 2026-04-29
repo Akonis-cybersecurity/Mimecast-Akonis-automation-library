@@ -39,8 +39,8 @@ class MimecastConnectorConfiguration(DefaultConnectorConfiguration):
     enable_threat_intel_feed: bool = True
     enable_threat_incidents: bool = True
     enable_awareness_training: bool = False  # daily polling, off by default
-    enable_web_security_logs: bool = False   # requires Web Security licence
-    enable_archive_logs: bool = False        # endpoint not available in API 2.0
+    enable_web_security_logs: bool = False  # requires Web Security licence
+    enable_archive_logs: bool = False  # endpoint not available in API 2.0
 
 
 class MimecastConnector(Connector):
@@ -311,9 +311,7 @@ class MimecastConnector(Connector):
             "from": cursor or self._start_iso(),
             "to": self._now_iso(),
         }
-        self._fetch_paginated_v2(
-            "/api/ttp/attachment/get-logs", data_payload, "ttp_attachment_logs_cursor", source
-        )
+        self._fetch_paginated_v2("/api/ttp/attachment/get-logs", data_payload, "ttp_attachment_logs_cursor", source)
         self._set_cursor("ttp_attachment_logs_cursor", self._now_iso())
 
     def _fetch_ttp_impersonation_logs(self) -> None:
@@ -354,9 +352,7 @@ class MimecastConnector(Connector):
             "startDateTime": cursor or self._start_iso(),
             "endDateTime": self._now_iso(),
         }
-        self._fetch_paginated_v2(
-            "/api/audit/get-audit-events", data_payload, "audit_events_cursor", source
-        )
+        self._fetch_paginated_v2("/api/audit/get-audit-events", data_payload, "audit_events_cursor", source)
         self._set_cursor("audit_events_cursor", self._now_iso())
 
     def _fetch_rejection_logs(self) -> None:
@@ -369,9 +365,7 @@ class MimecastConnector(Connector):
             "from": cursor or self._start_iso(),
             "to": self._now_iso(),
         }
-        self._fetch_paginated_v2(
-            "/api/gateway/get-rejections", data_payload, "rejection_logs_cursor", source
-        )
+        self._fetch_paginated_v2("/api/gateway/get-rejections", data_payload, "rejection_logs_cursor", source)
         self._set_cursor("rejection_logs_cursor", self._now_iso())
 
     def _fetch_message_release_logs(self) -> None:
@@ -442,9 +436,7 @@ class MimecastConnector(Connector):
                 data_entry["token"] = token
 
             try:
-                resp = self.client.post_v2(
-                    "/api/ttp/threatintel/get-feed", json={"data": [data_entry]}
-                )
+                resp = self.client.post_v2("/api/ttp/threatintel/get-feed", json={"data": [data_entry]})
             except MimecastAPIError as exc:
                 level = "warning" if exc.status_code == 404 else "error"
                 self.log(message=f"[{source}/{feed_type}] API error: {exc}", level=level)

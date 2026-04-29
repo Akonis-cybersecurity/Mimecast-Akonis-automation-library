@@ -56,11 +56,7 @@ class MimecastBlockSender(MimecastAction):
         payload = resp.json()
 
         # The API may return the policy ID at the top level or nested under "data"
-        policy_id = (
-            payload.get("id")
-            or payload.get("policyId")
-            or (payload.get("data") or {}).get("id", "")
-        )
+        policy_id = payload.get("id") or payload.get("policyId") or (payload.get("data") or {}).get("id", "")
 
         return {
             "policy_id": str(policy_id),

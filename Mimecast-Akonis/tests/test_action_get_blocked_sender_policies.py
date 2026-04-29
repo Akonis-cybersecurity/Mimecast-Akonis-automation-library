@@ -94,9 +94,7 @@ class TestGetBlockedSenderPoliciesSuccess:
         assert action.client.get_v2.call_count == 1
 
     def test_max_results_truncates_within_page(self, action):
-        action.client.get_v2 = MagicMock(
-            return_value=_make_resp([POLICY_A, POLICY_B, POLICY_C])
-        )
+        action.client.get_v2 = MagicMock(return_value=_make_resp([POLICY_A, POLICY_B, POLICY_C]))
 
         result = action.run({"max_results": 2})
 
@@ -146,9 +144,7 @@ class TestGetBlockedSenderPoliciesErrors:
 
     def test_api_error_on_second_page_is_re_raised(self, action):
         page1 = _make_resp([POLICY_A], next_token="tok-page2")
-        action.client.get_v2 = MagicMock(
-            side_effect=[page1, MimecastAPIError(500, "server error")]
-        )
+        action.client.get_v2 = MagicMock(side_effect=[page1, MimecastAPIError(500, "server error")])
 
         with pytest.raises(MimecastAPIError):
             action.run({})

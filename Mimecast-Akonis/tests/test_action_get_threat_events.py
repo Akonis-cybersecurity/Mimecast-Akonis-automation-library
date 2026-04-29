@@ -61,11 +61,13 @@ class TestGetThreatEventsSuccess:
     def test_list_params_sent_as_lists(self, action):
         _mock_get(action, {"data": []})
 
-        action.run({
-            "timestamp_range_starts_at": START,
-            "analysis": ["malware", "phishing"],
-            "status": ["blocked"],
-        })
+        action.run(
+            {
+                "timestamp_range_starts_at": START,
+                "analysis": ["malware", "phishing"],
+                "status": ["blocked"],
+            }
+        )
 
         params = action.client.get_v2.call_args[1]["params"]
         assert params["analysis"] == ["malware", "phishing"]
@@ -74,15 +76,17 @@ class TestGetThreatEventsSuccess:
     def test_all_optional_params_forwarded(self, action):
         _mock_get(action, {"data": []})
 
-        action.run({
-            "timestamp_range_starts_at": START,
-            "timestamp_range_ends_at": "2026-04-02T00:00:00+0000",
-            "direction": ["inbound"],
-            "source": ["email"],
-            "page_size": 50,
-            "limit": 100,
-            "order_by": "timestamp:desc",
-        })
+        action.run(
+            {
+                "timestamp_range_starts_at": START,
+                "timestamp_range_ends_at": "2026-04-02T00:00:00+0000",
+                "direction": ["inbound"],
+                "source": ["email"],
+                "page_size": 50,
+                "limit": 100,
+                "order_by": "timestamp:desc",
+            }
+        )
 
         params = action.client.get_v2.call_args[1]["params"]
         assert params["timestampRangeEndsAt"] == "2026-04-02T00:00:00+0000"

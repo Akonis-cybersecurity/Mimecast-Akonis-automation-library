@@ -7,12 +7,8 @@ from mimecast_modules.client.errors import MimecastAPIError, MimecastAuthError, 
 
 
 class GetThreatReportsArguments(BaseModel):
-    reported_message_aggregate_id: str = Field(
-        ..., description="Aggregate ID returned by Get Reported Emails"
-    )
-    page_size: Optional[int] = Field(
-        None, description="Page size: 25, 50, 100, 250, or 500 (default 50)"
-    )
+    reported_message_aggregate_id: str = Field(..., description="Aggregate ID returned by Get Reported Emails")
+    page_size: Optional[int] = Field(None, description="Page size: 25, 50, 100, 250, or 500 (default 50)")
     offset: Optional[int] = Field(None, description="Pagination offset (default 0)")
 
 
@@ -22,9 +18,7 @@ class MimecastGetThreatReports(MimecastAction):
     def run(self, arguments: dict[str, Any]) -> dict[str, Any]:
         args = GetThreatReportsArguments(**arguments)
 
-        params: dict[str, Any] = {
-            "reportedMessageAggregateId": args.reported_message_aggregate_id
-        }
+        params: dict[str, Any] = {"reportedMessageAggregateId": args.reported_message_aggregate_id}
         if args.page_size is not None:
             params["pageSize"] = str(args.page_size)
         if args.offset is not None:

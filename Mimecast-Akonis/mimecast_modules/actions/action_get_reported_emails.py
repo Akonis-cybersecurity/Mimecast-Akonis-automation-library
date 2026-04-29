@@ -9,9 +9,7 @@ from mimecast_modules.client.errors import MimecastAPIError, MimecastAuthError, 
 class GetReportedEmailsArguments(BaseModel):
     start: Optional[str] = Field(None, description="Start datetime (ISO-8601), defaults to 7 days ago")
     end: Optional[str] = Field(None, description="End datetime (ISO-8601), defaults to now")
-    page_size: Optional[int] = Field(
-        None, description="Page size: 25, 50, 100, 250, or 500 (default 50)"
-    )
+    page_size: Optional[int] = Field(None, description="Page size: 25, 50, 100, 250, or 500 (default 50)")
     offset: Optional[int] = Field(None, description="Pagination offset (default 0)")
 
 

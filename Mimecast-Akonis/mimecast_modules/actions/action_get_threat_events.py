@@ -7,9 +7,7 @@ from mimecast_modules.client.errors import MimecastAPIError, MimecastAuthError, 
 
 
 class GetThreatEventsArguments(BaseModel):
-    timestamp_range_starts_at: str = Field(
-        ..., description="Start of time range (ISO-8601 with timezone)"
-    )
+    timestamp_range_starts_at: str = Field(..., description="Start of time range (ISO-8601 with timezone)")
     timestamp_range_ends_at: Optional[str] = Field(None, description="End of time range (ISO-8601 with timezone)")
     analysis: Optional[List[str]] = Field(
         None, description="Filter by analysis type: malware, phishing, spam, suspicious, unwanted"

@@ -20,9 +20,7 @@ class MimecastDeleteBlockedSenderPolicy(MimecastAction):
         args = DeleteBlockedSenderPolicyArguments(**arguments)
 
         try:
-            self.client.delete_v2(
-                f"/policy-management/cloud-gateway/v1/blocked-senders/policies/{args.policy_id}"
-            )
+            self.client.delete_v2(f"/policy-management/cloud-gateway/v1/blocked-senders/policies/{args.policy_id}")
         except MimecastAuthError as exc:
             self.log(message=f"Authentication failed: {exc}", level="error")
             raise

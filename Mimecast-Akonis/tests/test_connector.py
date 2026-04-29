@@ -25,10 +25,10 @@ from mimecast_modules.client.errors import MimecastRateLimitError
 from mimecast_modules.client.http_client import MimecastClient
 from mimecast_modules.connector import MimecastConnector, MimecastConnectorConfiguration
 
-
 # ---------------------------------------------------------------------------
 # Test 1 — OAuth2 token acquisition
 # ---------------------------------------------------------------------------
+
 
 def test_oauth2_token_acquisition(data_storage):
     """Client fetches a new OAuth2 token and caches it."""
@@ -54,6 +54,7 @@ def test_oauth2_token_acquisition(data_storage):
 # ---------------------------------------------------------------------------
 # Test 2 — HMAC-SHA1 signature generation
 # ---------------------------------------------------------------------------
+
 
 def test_hmac_signature_structure():
     """HMAC headers contain all required fields and correctly formatted Authorization.
@@ -106,6 +107,7 @@ def test_hmac_signature_structure():
 # Test 3 — TTP URL logs with 2-page pagination
 # ---------------------------------------------------------------------------
 
+
 def test_fetch_ttp_url_logs_pagination(connector):
     """Fetcher paginates through two pages and pushes all events."""
     page1 = {
@@ -149,6 +151,7 @@ def test_fetch_ttp_url_logs_pagination(connector):
 # Test 4 — SIEM Stream with isCaughtUp=true stops polling
 # ---------------------------------------------------------------------------
 
+
 def test_fetch_siem_stream_caught_up(connector):
     """When isCaughtUp is true the fetcher makes exactly one call per log type and stops."""
     # The SIEM batch endpoint returns S3 URL items in "value", not inline events.
@@ -181,6 +184,7 @@ def test_fetch_siem_stream_caught_up(connector):
 # Test 5 — OAuth2 token automatic renewal when expired
 # ---------------------------------------------------------------------------
 
+
 def test_oauth2_token_renewal_when_expired(data_storage):
     """Client re-fetches the token when the cached one has expired."""
     client = MimecastClient(
@@ -206,6 +210,7 @@ def test_oauth2_token_renewal_when_expired(data_storage):
 # ---------------------------------------------------------------------------
 # Test 6 — HTTP 429 retry with backoff
 # ---------------------------------------------------------------------------
+
 
 def test_http_429_retry_backoff(data_storage):
     """Client retries up to 3 times on HTTP 429 and raises MimecastRateLimitError after exhaustion."""
@@ -246,6 +251,7 @@ def test_http_429_retry_backoff(data_storage):
 # Test 7a — Cursor saved after fetch
 # ---------------------------------------------------------------------------
 
+
 def test_cursor_saved_after_fetch(connector):
     """Cursor is written to state after a successful fetch."""
     page = {
@@ -268,6 +274,7 @@ def test_cursor_saved_after_fetch(connector):
 # ---------------------------------------------------------------------------
 # Test 7b — Cursor reloaded on second fetch call
 # ---------------------------------------------------------------------------
+
 
 def test_cursor_reloaded_between_calls(connector):
     """Cursor written in one fetch call is read back in the next call."""
@@ -305,6 +312,7 @@ def test_cursor_reloaded_between_calls(connector):
 # ---------------------------------------------------------------------------
 # Test 8 — Feature flag disables fetcher
 # ---------------------------------------------------------------------------
+
 
 def test_feature_flag_disables_ttp_url_logs(connector):
     """When enable_ttp_url_logs is False, the TTP URL fetcher is never called."""

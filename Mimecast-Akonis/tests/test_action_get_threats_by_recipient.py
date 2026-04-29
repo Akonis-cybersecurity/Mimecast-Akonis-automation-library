@@ -6,9 +6,7 @@ from mimecast_modules.actions.action_get_threats_by_recipient import MimecastGet
 from mimecast_modules.client.errors import MimecastAPIError, MimecastAuthError, MimecastRateLimitError
 
 START = "2026-04-01T00:00:00+0000"
-SAMPLE_RECIPIENTS = [
-    {"recipient": "victim@corp.com", "malwareCount": 3, "phishingCount": 1, "totalCount": 4}
-]
+SAMPLE_RECIPIENTS = [{"recipient": "victim@corp.com", "malwareCount": 3, "phishingCount": 1, "totalCount": 4}]
 
 
 @pytest.fixture
@@ -52,14 +50,16 @@ class TestGetThreatsByRecipientSuccess:
     def test_optional_params_forwarded(self, action):
         _mock_get(action, {"data": []})
 
-        action.run({
-            "start": START,
-            "end": "2026-04-02T00:00:00+0000",
-            "email": "victim@corp.com",
-            "page_size": 25,
-            "limit": 50,
-            "order_by": "malwareCount:desc",
-        })
+        action.run(
+            {
+                "start": START,
+                "end": "2026-04-02T00:00:00+0000",
+                "email": "victim@corp.com",
+                "page_size": 25,
+                "limit": 50,
+                "order_by": "malwareCount:desc",
+            }
+        )
 
         params = action.client.get_v2.call_args[1]["params"]
         assert params["email"] == "victim@corp.com"

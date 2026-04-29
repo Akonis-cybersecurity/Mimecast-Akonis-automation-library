@@ -43,11 +43,7 @@ class MimecastDeleteManagedSenders(MimecastAction):
             raise
 
         payload = resp.json()
-        deleted_count = (
-            payload.get("deletedCount")
-            or payload.get("deleted_count")
-            or len(args.ids)
-        )
+        deleted_count = payload.get("deletedCount") or payload.get("deleted_count") or len(args.ids)
 
         return {
             "deleted_count": int(deleted_count),

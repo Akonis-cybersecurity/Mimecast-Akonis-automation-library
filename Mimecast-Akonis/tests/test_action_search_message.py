@@ -73,18 +73,20 @@ class TestSearchMessageSuccess:
     def test_all_optional_fields_included_when_provided(self, action):
         _mock_post(action, {"data": []})
 
-        action.run({
-            "from_email": "a@b.com",
-            "to_email": "c@d.com",
-            "subject": "Test",
-            "start": "2026-01-01T00:00:00+0000",
-            "end": "2026-01-02T00:00:00+0000",
-            "route": ["inbound"],
-            "status": ["accepted", "held"],
-            "message_id": "<abc@example.com>",
-            "url": "https://example.com",
-            "sender_ip": "1.2.3.4",
-        })
+        action.run(
+            {
+                "from_email": "a@b.com",
+                "to_email": "c@d.com",
+                "subject": "Test",
+                "start": "2026-01-01T00:00:00+0000",
+                "end": "2026-01-02T00:00:00+0000",
+                "route": ["inbound"],
+                "status": ["accepted", "held"],
+                "message_id": "<abc@example.com>",
+                "url": "https://example.com",
+                "sender_ip": "1.2.3.4",
+            }
+        )
 
         body = action.client.post_v2.call_args[1]["json"]
         query = body["data"][0]

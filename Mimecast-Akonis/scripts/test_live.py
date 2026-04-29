@@ -20,6 +20,8 @@ Expected .env keys:
 from __future__ import annotations
 
 import argparse
+import gzip
+import io
 import json
 import os
 import sys
@@ -27,6 +29,8 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
+import requests
 
 # ---------------------------------------------------------------------------
 # sys.path — make mimecast_modules importable when the script is run from the
@@ -59,16 +63,30 @@ def _c(code: str, text: str) -> str:
     return f"\033[{code}m{text}\033[0m" if _USE_COLOUR else text
 
 
-def green(t: str) -> str:  return _c("32", t)
-def red(t: str)   -> str:  return _c("31", t)
-def yellow(t: str) -> str: return _c("33", t)
-def bold(t: str)  -> str:  return _c("1",  t)
-def dim(t: str)   -> str:  return _c("2",  t)
+def green(t: str) -> str:
+    return _c("32", t)
+
+
+def red(t: str) -> str:
+    return _c("31", t)
+
+
+def yellow(t: str) -> str:
+    return _c("33", t)
+
+
+def bold(t: str) -> str:
+    return _c("1", t)
+
+
+def dim(t: str) -> str:
+    return _c("2", t)
 
 
 # ---------------------------------------------------------------------------
 # .env parser (no python-dotenv dependency)
 # ---------------------------------------------------------------------------
+
 
 def _load_env_file(path: str) -> Dict[str, str]:
     """Parse a .env file and return a dict of key→value pairs."""
@@ -133,8 +151,15 @@ def _optional(key: str, default: str = "") -> str:
 
 # Common timestamp field names across Mimecast event types, in priority order.
 _TS_FIELDS = (
-    "eventTime", "date", "datetime", "timestamp", "time",
-    "createdAt", "updatedAt", "detectionTime", "sentDate",
+    "eventTime",
+    "date",
+    "datetime",
+    "timestamp",
+    "time",
+    "createdAt",
+    "updatedAt",
+    "detectionTime",
+    "sentDate",
 )
 
 
@@ -167,6 +192,7 @@ def _ts_range(events: List[Any]) -> Tuple[str, str]:
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FetchResult:
     name: str
@@ -182,6 +208,7 @@ class FetchResult:
 # Timestamp helpers
 # ---------------------------------------------------------------------------
 
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -194,6 +221,7 @@ def _start_iso(days: int) -> str:
 # Auth tests
 # ---------------------------------------------------------------------------
 
+
 def test_oauth2(client: MimecastClient) -> None:
     """Test OAuth2 authentication and print token expiry."""
     print(f"\n{bold('[ AUTH ] OAuth2 (API 2.0)')}")
@@ -201,8 +229,10 @@ def test_oauth2(client: MimecastClient) -> None:
     try:
         client._refresh_oauth_token()
         expires_in = int(client._oauth_token_expiry - time.time()) + 300  # re-add the 5 min buffer
-        print(f"  {green('✓')} OAuth2 OK — token expires in {expires_in}s "
-              f"(~{expires_in // 60} min)  [{time.time() - t0:.2f}s]")
+        print(
+            f"  {green('✓')} OAuth2 OK — token expires in {expires_in}s "
+            f"(~{expires_in // 60} min)  [{time.time() - t0:.2f}s]"
+        )
     except (MimecastAuthError, MimecastAPIError) as exc:
         print(f"  {red('✗')} OAuth2 FAILED: {exc}")
         sys.exit(1)
@@ -214,6 +244,7 @@ def test_oauth2(client: MimecastClient) -> None:
 #   into a local list instead of calling push_events_to_intakes().
 # — Only the first `max_pages` pages are fetched to keep the test fast.
 # ---------------------------------------------------------------------------
+
 
 def _paginated_v2(
     client: MimecastClient,
@@ -290,84 +321,124 @@ def _run(name: str, fn) -> FetchResult:
 
 # ---- GROUP 1 — SIEM & Security Logs ----------------------------------------
 
+_SIEM_LOG_TYPES = ("receipt", "process", "delivery", "journal")
+
+
 def fetch_siem_stream(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
+    """Fetch all SIEM log types, downloading .json.gz files from the returned S3 URLs."""
     events: List[dict] = []
-    page_token: Optional[str] = None
-    page = 0
-    while page < max_pages:
-        params: dict = {"fileFormat": "JSON"}
-        if page_token:
-            params["pageToken"] = page_token
-        resp = client.get_v2("/api/siem/v1/batch/events/cg", params=params)
-        payload = resp.json()
-        events.extend(payload.get("data", []))
-        next_token = payload.get("nextToken")
-        page += 1
-        if payload.get("isCaughtUp", False) or not next_token:
-            break
-        page_token = next_token
+    for log_type in _SIEM_LOG_TYPES:
+        print(f"\n    {bold(log_type)}", end=" ", flush=True)
+        next_page: Optional[str] = None
+        page = 0
+        try:
+            while page < max_pages:
+                params: dict = {"type": log_type}
+                if next_page:
+                    params["@nextPage"] = next_page
+                resp = client.get_v2("/siem/v1/batch/events/cg", params=params)
+                payload = resp.json()
+                # Each item in "value" is {"url": "https://...", "expiry": "...", "size": N}
+                url_items = payload.get("value", [])
+                print(f"→ {len(url_items)} URL(s) S3", end="", flush=True)
+                # Download only the first S3 file per type to keep the test fast
+                for item in url_items[:1]:
+                    url = item["url"] if isinstance(item, dict) else item
+                    try:
+                        dl = requests.get(url, timeout=60)
+                        dl.raise_for_status()
+                        file_events: List[dict] = []
+                        with gzip.open(io.BytesIO(dl.content)) as gz_file:
+                            for raw in gz_file:
+                                line = raw.decode("utf-8").strip()
+                                if line:
+                                    file_events.append(json.loads(line))
+                        print(f" → {len(file_events)} events", end="", flush=True)
+                        events.extend(file_events)
+                    except Exception as exc:
+                        print(f" {red(f'[err: {exc}]')}", end="", flush=True)
+                next_page = payload.get("@nextPage")
+                page += 1
+                if payload.get("isCaughtUp", False) or not next_page:
+                    break
+        except (MimecastAPIError, MimecastAuthError, MimecastRateLimitError) as exc:
+            print(f" {red(f'[API error: {exc}]')}", end="", flush=True)
+    print()  # newline after all types
     return events
 
 
 def fetch_ttp_url_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/ttp/url/get-logs",
-        {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso(),
-         "route": "all", "scanResult": "all"},
-        chunk_size=100, max_pages=max_pages,
+        client,
+        "/api/ttp/url/get-logs",
+        {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso(), "route": "all", "scanResult": "all"},
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 def fetch_ttp_attachment_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/ttp/attachment/get-logs",
+        client,
+        "/api/ttp/attachment/get-logs",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
-        chunk_size=100, max_pages=max_pages,
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 def fetch_ttp_impersonation_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/ttp/impersonation/get-logs",
-        {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso(),
-         "taggedMalicious": True},
-        chunk_size=100, max_pages=max_pages,
+        client,
+        "/api/ttp/impersonation/get-logs",
+        {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso(), "taggedMalicious": True},
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 def fetch_dlp_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/dlp/get-logs",
+        client,
+        "/api/dlp/get-logs",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
-        chunk_size=100, max_pages=max_pages,
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 def fetch_audit_events(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/audit/get-audit-events",
+        client,
+        "/api/audit/get-audit-events",
         {"startDateTime": _start_iso(days), "endDateTime": _now_iso()},
-        chunk_size=100, max_pages=max_pages,
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 def fetch_rejection_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/gateway/get-rejections",
+        client,
+        "/api/gateway/get-rejections",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
-        chunk_size=100, max_pages=max_pages,
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 def fetch_message_release_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/gateway/get-message-release-logs",
+        client,
+        "/api/gateway/get-hold-message-list",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
-        chunk_size=100, max_pages=max_pages,
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 # ---- GROUP 2 — Threat Intelligence ------------------------------------------
+
 
 def fetch_threat_events(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     events: List[dict] = []
@@ -413,13 +484,16 @@ def fetch_threat_intel_feed(client: MimecastClient, days: int, max_pages: int) -
 
 def fetch_threat_incidents(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     return _paginated_v2(
-        client, "/api/ttp/remediation/find-incidents",
+        client,
+        "/api/ttp/remediation/find-incidents",
         {"oldestFirst": True, "from": _start_iso(days), "to": _now_iso()},
-        chunk_size=100, max_pages=max_pages,
+        chunk_size=100,
+        max_pages=max_pages,
     )
 
 
 # ---- GROUP 3 — Awareness Training -------------------------------------------
+
 
 def fetch_awareness_training(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     items: List[dict] = []
@@ -447,6 +521,7 @@ def fetch_awareness_training(client: MimecastClient, days: int, max_pages: int) 
 
 # ---- GROUP 4 — Web Security -------------------------------------------------
 
+
 def fetch_web_security_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     items: List[dict] = []
     for log_type, endpoint in (
@@ -468,6 +543,7 @@ def fetch_web_security_logs(client: MimecastClient, days: int, max_pages: int) -
 
 # ---- GROUP 5 — Archive Logs -------------------------------------------------
 
+
 def fetch_archive_logs(client: MimecastClient, days: int, max_pages: int) -> List[dict]:
     items: List[dict] = []
     for endpoint in (
@@ -476,9 +552,11 @@ def fetch_archive_logs(client: MimecastClient, days: int, max_pages: int) -> Lis
     ):
         items.extend(
             _paginated_v2(
-                client, endpoint,
+                client,
+                endpoint,
                 {"from": _start_iso(days), "to": _now_iso()},
-                chunk_size=100, max_pages=max_pages,
+                chunk_size=100,
+                max_pages=max_pages,
             )
         )
     return items
@@ -490,21 +568,21 @@ def fetch_archive_logs(client: MimecastClient, days: int, max_pages: int) -> Lis
 
 # Each entry: (name, function)
 FETCHER_REGISTRY = [
-    ("siem_stream",            fetch_siem_stream),
-    ("ttp_url_logs",           fetch_ttp_url_logs),
-    ("ttp_attachment_logs",    fetch_ttp_attachment_logs),
+    ("siem_stream", fetch_siem_stream),
+    ("ttp_url_logs", fetch_ttp_url_logs),
+    ("ttp_attachment_logs", fetch_ttp_attachment_logs),
     ("ttp_impersonation_logs", fetch_ttp_impersonation_logs),
-    ("dlp_logs",               fetch_dlp_logs),
-    ("audit_events",           fetch_audit_events),
-    ("rejection_logs",         fetch_rejection_logs),
-    ("message_release_logs",   fetch_message_release_logs),
-    ("threat_events",          fetch_threat_events),
-    ("threat_intel_feed",      fetch_threat_intel_feed),
-    ("threat_incidents",       fetch_threat_incidents),
+    ("dlp_logs", fetch_dlp_logs),
+    ("audit_events", fetch_audit_events),
+    ("rejection_logs", fetch_rejection_logs),
+    ("message_release_logs", fetch_message_release_logs),
+    ("threat_events", fetch_threat_events),
+    ("threat_intel_feed", fetch_threat_intel_feed),
+    ("threat_incidents", fetch_threat_incidents),
     # Pending API 2.0 availability — disabled by default in the connector
-    ("awareness_training",     fetch_awareness_training),
-    ("web_security_logs",      fetch_web_security_logs),
-    ("archive_logs",           fetch_archive_logs),
+    ("awareness_training", fetch_awareness_training),
+    ("web_security_logs", fetch_web_security_logs),
+    ("archive_logs", fetch_archive_logs),
 ]
 
 FETCHER_NAMES = [name for name, _ in FETCHER_REGISTRY]
@@ -514,6 +592,7 @@ FETCHER_NAMES = [name for name, _ in FETCHER_REGISTRY]
 # Summary table
 # ---------------------------------------------------------------------------
 
+
 def _trunc(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
@@ -522,11 +601,11 @@ def print_summary(results: List[FetchResult]) -> None:
     """Print a box-drawing summary table to stdout."""
 
     # Column widths
-    W_NAME   = max(24, max(len(r.name) for r in results))
-    W_COUNT  = 7
-    W_TS     = 24
+    W_NAME = max(24, max(len(r.name) for r in results))
+    W_COUNT = 7
+    W_TS = 24
     W_STATUS = 30
-    W_TIME   = 7
+    W_TIME = 7
 
     sep = (
         f"┼{'─' * (W_NAME + 2)}┼{'─' * (W_COUNT + 2)}┼{'─' * (W_TS + 2)}"
@@ -571,8 +650,7 @@ def print_summary(results: List[FetchResult]) -> None:
     errors = [r for r in results if r.status == "ERROR"]
     print(
         f"\n  {bold('Total:')} {ok_count}/{len(results)} fetchers OK"
-        f" — {bold(str(total_events))} events collected"
-        + (f" — {red(str(len(errors)))} errors" if errors else "")
+        f" — {bold(str(total_events))} events collected" + (f" — {red(str(len(errors)))} errors" if errors else "")
     )
 
     if errors:
@@ -584,6 +662,7 @@ def print_summary(results: List[FetchResult]) -> None:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def build_client() -> MimecastClient:
     return MimecastClient(
@@ -600,19 +679,26 @@ def main() -> None:
         epilog=f"Available fetchers:\n  " + "\n  ".join(FETCHER_NAMES),
     )
     parser.add_argument(
-        "--env", metavar="FILE",
+        "--env",
+        metavar="FILE",
         help="Path to .env file (default: auto-detected)",
     )
     parser.add_argument(
-        "--days", type=int, default=1,
+        "--days",
+        type=int,
+        default=1,
         help="Historical window in days for time-range queries (default: 1)",
     )
     parser.add_argument(
-        "--max-pages", type=int, default=1, dest="max_pages",
+        "--max-pages",
+        type=int,
+        default=1,
+        dest="max_pages",
         help="Max pages to fetch per paginated endpoint (default: 1)",
     )
     parser.add_argument(
-        "--fetchers", metavar="f1,f2,...",
+        "--fetchers",
+        metavar="f1,f2,...",
         help="Comma-separated list of fetchers to run (default: all)",
     )
     args = parser.parse_args()

@@ -17,6 +17,7 @@ def action(module):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_post(action, json_data: dict, status_code: int = 200):
     """Patch client.post_v2 to return a mock response."""
     resp = MagicMock()
@@ -31,6 +32,7 @@ def _mock_post(action, json_data: dict, status_code: int = 200):
 # Success cases
 # ---------------------------------------------------------------------------
 
+
 class TestBlockSenderSuccess:
     def test_block_everyone_returns_policy_id(self, action):
         _mock_post(action, {"id": "policy-abc123"})
@@ -44,10 +46,12 @@ class TestBlockSenderSuccess:
     def test_block_specific_recipient(self, action):
         _mock_post(action, {"id": "policy-xyz"})
 
-        result = action.run({
-            "sender_email": "spammer@evil.com",
-            "to_email": "victim@corp.com",
-        })
+        result = action.run(
+            {
+                "sender_email": "spammer@evil.com",
+                "to_email": "victim@corp.com",
+            }
+        )
 
         call_body = action.client.post_v2.call_args[1]["json"]
         assert call_body["to"] == {
@@ -111,6 +115,7 @@ class TestBlockSenderSuccess:
 # ---------------------------------------------------------------------------
 # Error cases
 # ---------------------------------------------------------------------------
+
 
 class TestBlockSenderErrors:
     def test_api_error_is_re_raised(self, action):
