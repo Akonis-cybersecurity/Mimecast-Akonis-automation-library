@@ -24,6 +24,7 @@ requests-mock = "*"
 line-length = 119
 target-version = ["py311"]
 include = "\\.pyi?$"
+exclude = "scripts/"
 
 [tool.isort]
 profile = "black"
