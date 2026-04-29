@@ -150,34 +150,31 @@ def test_fetch_ttp_url_logs_pagination(connector):
 # ---------------------------------------------------------------------------
 
 def test_fetch_siem_stream_caught_up(connector):
-    """When isCaughtUp is true the fetcher stops and does not make further requests."""
+    """When isCaughtUp is true the fetcher makes exactly one call per log type and stops."""
+    # The SIEM batch endpoint returns S3 URL items in "value", not inline events.
+    # Empty value = no S3 files to download. @nextPage + isCaughtUp=True = save cursor and stop.
     response_payload = {
-        "data": [
-            {"type": "receipt", "aCode": "abc123"},
-            {"type": "ttpUrl", "aCode": "def456"},
-        ],
-        "nextToken": "token_xyz",
+        "value": [],
+        "@nextPage": "token_xyz",
         "isCaughtUp": True,
     }
 
     with req_mock_module.Mocker() as m:
         m.get(
-            "https://api.services.mimecast.com/api/siem/v1/batch/events/cg",
+            "https://api.services.mimecast.com/siem/v1/batch/events/cg",
             json=response_payload,
         )
-        # Provide a valid OAuth2 token so the client doesn't need to fetch one
         with patch.object(connector.client, "_get_oauth_token", return_value="mock_token"):
             connector._fetch_siem_stream()
 
-    # Only one HTTP call was made (no second page requested)
-    assert m.call_count == 1
-    # Events were pushed
-    connector.push_events_to_intakes.assert_called_once()
-    pushed = connector.push_events_to_intakes.call_args[1]["events"]
-    assert len(pushed) == 2
-    # Cursor was saved
-    saved_token = connector._get_cursor("siem_stream_token")
-    assert saved_token == "token_xyz"
+    # One call per log type (receipt, process, delivery, journal) — isCaughtUp prevents pagination
+    assert m.call_count == 4
+    # No events pushed (value was empty, no S3 files)
+    connector.push_events_to_intakes.assert_not_called()
+    # Cursor saved for each log type
+    for log_type in ("receipt", "process", "delivery", "journal"):
+        saved_token = connector._get_cursor(f"siem_{log_type}_token")
+        assert saved_token == "token_xyz"
 
 
 # ---------------------------------------------------------------------------
