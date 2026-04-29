@@ -27,7 +27,7 @@
     ]
   },
   "description": "Mimecast is a cloud security platform for email. This module collects security events, operational logs, and compliance data (SIEM stream, TTP URL/Attachment/Impersonation, DLP, Audit, Threat Intel, and more) and forwards them to SEKOIA.IO.",
-  "name": "Mimecast",
+  "name": "Mimecast (Akonis)",
   "slug": "mimecast-akonis",
   "uuid": "c09d4315-7933-41f8-b715-0d59a11886fd",
   "version": "0.0.12",
